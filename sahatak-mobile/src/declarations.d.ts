@@ -84,6 +84,9 @@ declare module 'lucide-react-native' {
   export const Mail: Icon;
   export const Lock: Icon;
   export const RotateCcw: Icon;
+  export const Camera: Icon;
+  export const EyeOff: Icon;
+  export const ImageIcon: Icon;
 
   const icons: { [key: string]: Icon };
   export default icons;

@@ -14,6 +14,16 @@ const DEFAULT_BASE_URL = Platform.select({
 });
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || DEFAULT_BASE_URL;
+export const SERVER_HOST = API_BASE_URL.replace(/\/api\/?$/, '');
+
+export const resolveImageUrl = (url?: string): string => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://') || url.startsWith('data:')) {
+    return url;
+  }
+  const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  return `${SERVER_HOST}${cleanPath}`;
+};
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,

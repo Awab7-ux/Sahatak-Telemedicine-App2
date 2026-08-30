@@ -35,8 +35,12 @@ import {
   X,
 } from 'lucide-react-native';
 import { useApp } from '../../context/AppContext';
+import { resolveImageUrl } from '../../api/client';
 import { DOCTORS } from '../../data/mockData';
 import { Colors } from '../../theme/colors';
+import { Shadows } from '../../theme/styles';
+
+const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80';
 
 export const VideoConsultationScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
@@ -116,7 +120,7 @@ export const VideoConsultationScreen: React.FC = () => {
       {/* Picture-in-Picture (Patient Self Preview) */}
       <View style={[styles.pipContainer, { top: Math.max(insets.top, 14) + 60 }]}>
         {isVideoOn ? (
-          <Image source={{ uri: user.avatar }} style={styles.pipImage} />
+          <Image source={{ uri: user?.avatar ? resolveImageUrl(user.avatar) : DEFAULT_AVATAR }} style={styles.pipImage} />
         ) : (
           <View style={styles.pipVideoOff}>
             <VideoOff size={18} color={Colors.slate[400]} />

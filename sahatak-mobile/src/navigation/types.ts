@@ -18,6 +18,8 @@ export type BottomTabParamList = {
 };
 
 export type RootStackParamList = {
+  Login: undefined;
+  Signup: undefined;
   MainTabs: NavigatorScreenParams<BottomTabParamList> | undefined;
   DoctorList: { categoryId?: string; query?: string } | undefined;
   DoctorDetail: { doctor?: Doctor; doctorId?: string } | undefined;

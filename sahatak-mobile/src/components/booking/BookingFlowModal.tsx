@@ -45,10 +45,10 @@ export const BookingFlowModal: React.FC = () => {
   const doctor = bookingDraft.doctor || selectedDoctor || DOCTORS[0];
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [patientName, setPatientName] = useState<string>(user.name || 'Ahmed Mansoor');
-  const [patientAge, setPatientAge] = useState<string>(user.age?.toString() || '32');
+  const [patientName, setPatientName] = useState<string>(user?.name || '');
+  const [patientAge, setPatientAge] = useState<string>(user?.age?.toString() || '30');
   const [patientGender, setPatientGender] = useState<'Male' | 'Female'>(
-    user.gender === 'Female' ? 'Female' : 'Male'
+    user?.gender === 'Female' ? 'Female' : 'Male'
   );
   const [symptoms, setSymptoms] = useState<string>('Routine health check and medical consultation.');
   const [consultationType, setConsultationType] = useState<ConsultationType>(

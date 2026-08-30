@@ -39,21 +39,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ visible, onClose }) => {
     setIsLoading(true);
     try {
       if (mode === 'login') {
-        const success = await login(email, password);
-        if (success) {
-          Alert.alert(t('Success', 'نجاح'), t('Logged in successfully!', 'تم تسجيل الدخول بنجاح!'));
-          onClose();
-        } else {
-          Alert.alert(t('Error', 'خطأ'), t('Invalid credentials', 'بيانات الدخول غير صحيحة'));
-        }
+        await login(email, password);
+        Alert.alert(t('Success', 'نجاح'), t('Logged in successfully!', 'تم تسجيل الدخول بنجاح!'));
+        onClose();
       } else {
-        const success = await register(name, email, password);
-        if (success) {
-          Alert.alert(t('Success', 'نجاح'), t('Account created successfully!', 'تم إنشاء الحساب بنجاح!'));
-          onClose();
-        } else {
-          Alert.alert(t('Error', 'خطأ'), t('Could not create account', 'تعذر إنشاء الحساب'));
-        }
+        await register({ name, email, phone: '+966500000000', password });
+        Alert.alert(t('Success', 'نجاح'), t('Account created successfully!', 'تم إنشاء الحساب بنجاح!'));
+        onClose();
       }
     } catch (e: any) {
       Alert.alert(t('Error', 'خطأ'), e?.message || 'Authentication failed');

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,9 @@ import {
   TextInput,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import {
   User,
   Heart,
@@ -26,18 +28,23 @@ import {
   Ruler,
   ShieldCheck,
   Edit2,
+  Camera,
   LogIn,
 } from 'lucide-react-native';
 import { useApp } from '../../context/AppContext';
 import { Header } from '../common/Header';
-import { AuthModal } from './AuthModal';
+import { resolveImageUrl } from '../../api/client';
+import { uploadAvatarApi } from '../../api/profile';
 import { Colors } from '../../theme/colors';
 import { Shadows } from '../../theme/styles';
+
+const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80';
 
 export const ProfileScreen: React.FC = () => {
   const {
     user,
     updateUser,
+    updateUserProfile,
     lang,
     setLang,
     navigateTo,
@@ -48,22 +55,102 @@ export const ProfileScreen: React.FC = () => {
   } = useApp();
 
   const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [nameInput, setNameInput] = useState<string>(user.name);
-  const [phoneInput, setPhoneInput] = useState<string>(user.phone);
-  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [nameInput, setNameInput] = useState<string>(user?.name || '');
+  const [phoneInput, setPhoneInput] = useState<string>(user?.phone || '');
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (user) {
+      setNameInput(user.name || '');
+      setPhoneInput(user.phone || '');
+    }
+  }, [user]);
 
   const Chevron = isRtl ? ChevronLeft : ChevronRight;
 
-  const handleSaveProfile = () => {
-    updateUser({ name: nameInput, phone: phoneInput });
-    setIsEditing(false);
-    Alert.alert(t('Profile Saved', 'تم حفظ الملف الشخصي'));
+  const handleSaveProfile = async () => {
+    if (!nameInput.trim()) {
+      Alert.alert(t('Validation Error', 'خطأ في البيانات'), t('Full name cannot be empty.', 'لا يمكن ترك الاسم فارغاً.'));
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await updateUserProfile({
+        name: nameInput.trim(),
+        phone: phoneInput.trim(),
+      });
+      setIsEditing(false);
+      Alert.alert(
+        t('Profile Saved', 'تم حفظ الملف الشخصي'),
+        t('Your profile changes were saved successfully on the server.', 'تم حفظ التعديلات بنجاح على الخادم.')
+      );
+    } catch (err: any) {
+      console.log('Error saving profile:', err);
+      Alert.alert(
+        t('Save Failed', 'تعذر حفظ التعديلات'),
+        err?.response?.data?.error || t('Could not connect to server to save changes.', 'تعذر الاتصال بالخادم لحفظ التعديلات.')
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleChangeAvatar = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          t('Permission Required', 'مطلوب إذن الوصول'),
+          t('Photo library access is needed to change your profile picture.', 'يحتاج التطبيق إلى إذن الوصول لمعرض الصور لتغيير الصورة الشخصية.')
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]?.uri) {
+        setIsUploadingAvatar(true);
+        const res = await uploadAvatarApi(result.assets[0].uri);
+        if (res?.user) {
+          updateUser(res.user);
+        } else if (res?.avatar) {
+          updateUser({ avatar: res.avatar });
+        }
+        Alert.alert(t('Success', 'نجاح'), t('Profile picture updated successfully!', 'تم تحديث الصورة الشخصية بنجاح!'));
+      }
+    } catch (err: any) {
+      console.log('Avatar upload error:', err);
+      Alert.alert(t('Error', 'خطأ'), t('Failed to upload profile picture.', 'تعذر رفع الصورة الشخصية.'));
+    } finally {
+      setIsUploadingAvatar(false);
+    }
   };
 
   const handleLogout = async () => {
-    await logout();
-    Alert.alert(t('Logged Out', 'تم تسجيل الخروج'), t('You have been logged out.', 'تم تسجيل خروجك بنجاح.'));
+    Alert.alert(
+      t('Confirm Logout', 'تأكيد تسجيل الخروج'),
+      t('Are you sure you want to log out of Sahatak?', 'هل أنت متأكد من رغبتك في تسجيل الخروج من تطبيق صحتك؟'),
+      [
+        { text: t('Cancel', 'إلغاء'), style: 'cancel' },
+        {
+          text: t('Logout', 'تسجيل الخروج'),
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+          },
+        },
+      ]
+    );
   };
+
+  const avatarUrl = user?.avatar ? resolveImageUrl(user.avatar) : DEFAULT_AVATAR;
 
   return (
     <View style={styles.container}>
@@ -81,13 +168,18 @@ export const ProfileScreen: React.FC = () => {
         <View style={styles.userCard}>
           <View style={[styles.userCardInner, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <View style={styles.avatarWrap}>
-              <Image source={{ uri: user.avatar }} style={styles.avatarImg} />
+              <Image source={{ uri: avatarUrl }} style={styles.avatarImg} />
               <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={() => setIsEditing(!isEditing)}
+                onPress={handleChangeAvatar}
+                disabled={isUploadingAvatar}
                 style={styles.editAvatarBtn}
               >
-                <Edit2 size={12} color={Colors.white} />
+                {isUploadingAvatar ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <Camera size={12} color={Colors.white} />
+                )}
               </TouchableOpacity>
             </View>
 
@@ -98,32 +190,46 @@ export const ProfileScreen: React.FC = () => {
                     value={nameInput}
                     onChangeText={setNameInput}
                     style={styles.inlineInput}
-                    placeholder="Full Name"
+                    placeholder={t('Full Name', 'الاسم الكامل')}
                   />
                   <TextInput
                     value={phoneInput}
                     onChangeText={setPhoneInput}
                     style={styles.inlineInput}
-                    placeholder="Phone"
+                    placeholder={t('Phone Number', 'رقم الهاتف')}
                   />
                   <TouchableOpacity
                     activeOpacity={0.8}
                     onPress={handleSaveProfile}
+                    disabled={isSaving}
                     style={styles.saveInlineBtn}
                   >
-                    <Text style={styles.saveInlineBtnText}>{t('Save', 'حفظ')}</Text>
+                    {isSaving ? (
+                      <ActivityIndicator size="small" color={Colors.white} />
+                    ) : (
+                      <Text style={styles.saveInlineBtnText}>{t('Save to Server', 'حفظ على الخادم')}</Text>
+                    )}
                   </TouchableOpacity>
                 </View>
               ) : (
                 <>
                   <View style={[styles.userNameRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-                    <Text style={styles.userNameText}>{t(user.name, user.nameAr)}</Text>
+                    <Text style={styles.userNameText}>
+                      {user?.name ? t(user.name, user.nameAr || user.name) : t('Patient', 'المريض')}
+                    </Text>
                     <ShieldCheck size={16} color={Colors.primary} />
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => setIsEditing(true)}
+                      style={{ padding: 2 }}
+                    >
+                      <Edit2 size={13} color={Colors.primary} />
+                    </TouchableOpacity>
                   </View>
-                  <Text style={styles.userPhoneText}>{user.phone}</Text>
+                  <Text style={styles.userPhoneText}>{user?.phone || user?.email || ''}</Text>
                   <View style={styles.vipBadge}>
                     <Text style={styles.vipBadgeText}>
-                      {user.insuranceProvider} • VIP
+                      {user?.insuranceProvider || t('Active Patient', 'مريض نشط')} • VIP
                     </Text>
                   </View>
                 </>
@@ -139,7 +245,7 @@ export const ProfileScreen: React.FC = () => {
               <Droplet size={16} color={Colors.danger} />
             </View>
             <Text style={styles.vitalLabel}>{t('Blood', 'الفصيلة')}</Text>
-            <Text style={styles.vitalVal}>{user.bloodGroup || 'O+'}</Text>
+            <Text style={styles.vitalVal}>{user?.bloodType || user?.bloodGroup || 'O+'}</Text>
           </View>
 
           <View style={styles.vitalCard}>
@@ -147,7 +253,7 @@ export const ProfileScreen: React.FC = () => {
               <Scale size={16} color={Colors.primary} />
             </View>
             <Text style={styles.vitalLabel}>{t('Weight', 'الوزن')}</Text>
-            <Text style={styles.vitalVal}>{user.weight || '74 kg'}</Text>
+            <Text style={styles.vitalVal}>{user?.weight || '74 kg'}</Text>
           </View>
 
           <View style={styles.vitalCard}>
@@ -155,7 +261,7 @@ export const ProfileScreen: React.FC = () => {
               <Ruler size={16} color={Colors.accent} />
             </View>
             <Text style={styles.vitalLabel}>{t('Height', 'الطول')}</Text>
-            <Text style={styles.vitalVal}>{user.height || '178 cm'}</Text>
+            <Text style={styles.vitalVal}>{user?.height || '178 cm'}</Text>
           </View>
 
           <View style={styles.vitalCard}>
@@ -163,7 +269,7 @@ export const ProfileScreen: React.FC = () => {
               <Activity size={16} color={Colors.warning} />
             </View>
             <Text style={styles.vitalLabel}>{t('Age', 'العمر')}</Text>
-            <Text style={styles.vitalVal}>{user.age} {t('yrs', 'سنة')}</Text>
+            <Text style={styles.vitalVal}>{user?.age || 30} {t('yrs', 'سنة')}</Text>
           </View>
         </View>
 
@@ -175,10 +281,12 @@ export const ProfileScreen: React.FC = () => {
               <Text style={styles.coveredText}>100% COVERED</Text>
             </View>
           </View>
-          <Text style={styles.insHolderName}>{t(user.name, user.nameAr)}</Text>
-          <Text style={styles.insPolicyNumber}>Policy: {user.insurancePolicyNumber || 'BUP-8890-4412'}</Text>
+          <Text style={styles.insHolderName}>
+            {user?.name ? t(user.name, user.nameAr || user.name) : t('Patient', 'المريض')}
+          </Text>
+          <Text style={styles.insPolicyNumber}>Policy: {user?.insurancePolicyNumber || user?.policyNumber || 'BUP-8890-4412'}</Text>
           <View style={[styles.insFooter, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-            <Text style={styles.insFooterText}>Provider: {user.insuranceProvider}</Text>
+            <Text style={styles.insFooterText}>Provider: {user?.insuranceProvider || 'Bupa Arabia'}</Text>
             <Text style={styles.insFooterText}>Expiry: 12/2026</Text>
           </View>
         </View>
@@ -282,49 +390,25 @@ export const ProfileScreen: React.FC = () => {
               </View>
             </TouchableOpacity>
 
-            {/* Login or Logout */}
-            {isAuthenticated ? (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={handleLogout}
-                style={[styles.menuItem, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
-              >
-                <View style={[styles.menuItemLeft, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-                  <View style={[styles.menuIconWrap, { backgroundColor: Colors.dangerLight }]}>
-                    <LogOut size={18} color={Colors.danger} />
-                  </View>
-                  <Text style={[styles.menuItemTitle, { color: Colors.danger }]}>
-                    {t('Logout', 'تسجيل الخروج')}
-                  </Text>
+            {/* Logout */}
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={handleLogout}
+              style={[styles.menuItem, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
+            >
+              <View style={[styles.menuItemLeft, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <View style={[styles.menuIconWrap, { backgroundColor: Colors.dangerLight }]}>
+                  <LogOut size={18} color={Colors.danger} />
                 </View>
-                <Chevron size={18} color={Colors.slate[400]} />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => setShowAuthModal(true)}
-                style={[styles.menuItem, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
-              >
-                <View style={[styles.menuItemLeft, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-                  <View style={[styles.menuIconWrap, { backgroundColor: Colors.primarySubtle }]}>
-                    <LogIn size={18} color={Colors.primary} />
-                  </View>
-                  <Text style={[styles.menuItemTitle, { color: Colors.primary }]}>
-                    {t('Login / Register', 'تسجيل الدخول / إنشاء حساب')}
-                  </Text>
-                </View>
-                <Chevron size={18} color={Colors.slate[400]} />
-              </TouchableOpacity>
-            )}
+                <Text style={[styles.menuItemTitle, { color: Colors.danger }]}>
+                  {t('Logout', 'تسجيل الخروج')}
+                </Text>
+              </View>
+              <Chevron size={18} color={Colors.slate[400]} />
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
-
-      {/* Auth Modal Dialog */}
-      <AuthModal
-        visible={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-      />
     </View>
   );
 };

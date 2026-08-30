@@ -30,8 +30,11 @@ import {
 import { useApp } from '../../context/AppContext';
 import { DOCTOR_CATEGORIES, HEALTH_CHECKUP_PACKAGES } from '../../data/mockData';
 import { MedicalIcon } from '../common/MedicalIcon';
+import { resolveImageUrl } from '../../api/client';
 import { Colors } from '../../theme/colors';
 import { Shadows } from '../../theme/styles';
+
+const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80';
 
 export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
@@ -50,6 +53,7 @@ export const HomeScreen: React.FC = () => {
 
   const Arrow = isRtl ? ArrowLeft : ArrowRight;
   const upcomingApt = appointments.find((a) => a.status === 'upcoming') || appointments[0];
+  const avatarUrl = user?.avatar ? resolveImageUrl(user.avatar) : DEFAULT_AVATAR;
 
   return (
     <ScrollView
@@ -73,7 +77,7 @@ export const HomeScreen: React.FC = () => {
             style={[styles.userRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
           >
             <Image
-              source={{ uri: user.avatar }}
+              source={{ uri: avatarUrl }}
               style={styles.avatar}
             />
             <View style={{ alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
@@ -81,7 +85,7 @@ export const HomeScreen: React.FC = () => {
                 {t('Good morning,', 'صباح الخير،')}
               </Text>
               <Text style={styles.userName}>
-                {t(user.name, user.nameAr)}
+                {user?.name ? t(user.name, user.nameAr || user.name) : t('Patient', 'المريض')}
               </Text>
             </View>
           </TouchableOpacity>
@@ -108,7 +112,7 @@ export const HomeScreen: React.FC = () => {
               {t('My location at', 'موقعي الحالي في')}
             </Text>
             <Text numberOfLines={1} style={styles.locationValue}>
-              {t(user.location, user.locationAr)}
+              {user?.location ? t(user.location, user.locationAr || user.location) : t('Khartoum, Sudan', 'الخرطوم، السودان')}
             </Text>
           </View>
           <ChevronDown size={16} color={Colors.primary} />

@@ -146,7 +146,7 @@ export const CartScreen: React.FC = () => {
             <View style={[styles.addressTextWrap, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
               <Text style={styles.addressLabel}>{t('Delivery Address', 'عنوان التوصيل')}</Text>
               <Text numberOfLines={1} style={styles.addressValue}>
-                {t(user.location, user.locationAr)}
+                {user?.location ? t(user.location, user.locationAr || user.location) : t('Khartoum, Sudan', 'الخرطوم، السودان')}
               </Text>
             </View>
             <TouchableOpacity onPress={() => navigateTo('clinics_map')}>

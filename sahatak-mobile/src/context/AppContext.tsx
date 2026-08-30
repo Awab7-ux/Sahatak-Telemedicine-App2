@@ -26,12 +26,12 @@ import {
   MEDICAL_RECORDS,
   INITIAL_NOTIFICATIONS,
   INITIAL_CHAT_MESSAGES,
-  INITIAL_USER,
 } from '../data/mockData';
 
 import { navigate, goBack as navGoBack } from '../navigation/navigationRef';
-import { getAuthToken, saveAuthToken, removeAuthToken } from '../api/client';
-import { fetchCurrentUser, loginUser, registerUser } from '../api/auth';
+import { getAuthToken, removeAuthToken } from '../api/client';
+import { fetchCurrentUser, loginUser, registerUser, RegisterPayload } from '../api/auth';
+import { updateProfileApi } from '../api/profile';
 import { fetchDoctorsApi } from '../api/doctors';
 import { fetchProductsApi } from '../api/pharmacy';
 import { fetchAppointmentsApi, createAppointmentApi, cancelAppointmentApi } from '../api/appointments';
@@ -52,9 +52,10 @@ interface AppContextType {
   setActiveTab: (tab: BottomNavTab) => void;
 
   // Auth
+  isAuthLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, pass: string) => Promise<boolean>;
-  register: (name: string, email: string, pass: string) => Promise<boolean>;
+  login: (identifier: string, pass: string) => Promise<void>;
+  register: (payload: RegisterPayload) => Promise<void>;
   logout: () => Promise<void>;
 
   // Selected Entities
@@ -104,8 +105,9 @@ interface AppContextType {
   toggleFavoriteDoctor: (id: string) => void;
 
   // User
-  user: UserProfile;
+  user: UserProfile | null;
   updateUser: (data: Partial<UserProfile>) => void;
+  updateUserProfile: (data: Partial<UserProfile>) => Promise<UserProfile>;
 
   // Global Search / Draft
   searchQuery: string;
@@ -127,7 +129,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [lang, setLangState] = useState<Language>('en');
   const [screen, setScreen] = useState<ScreenType>('home');
   const [activeTab, setActiveTabState] = useState<BottomNavTab>('home');
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [user, setUser] = useState<UserProfile | null>(null);
 
   const [doctors, setDoctors] = useState<Doctor[]>(DOCTORS);
   const [products, setProducts] = useState<Product[]>(POPULAR_PRODUCTS);
@@ -149,12 +153,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeChatDoctor, setActiveChatDoctor] = useState<Doctor>(DOCTORS[0]);
 
   const [favorites, setFavorites] = useState<string[]>(['doc-1', 'doc-3']);
-  const [user, setUser] = useState<UserProfile>(INITIAL_USER);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [bookingDraft, setBookingDraft] = useState<Partial<Appointment>>({});
   const [isVideoCallActive, setIsVideoCallActive] = useState<boolean>(false);
 
-  // Initialize Language & Auto-Login from storage
+  // Initialize Language & Validate Token from SecureStore
   useEffect(() => {
     const initApp = async () => {
       try {
@@ -172,13 +175,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (token) {
           try {
             const profile = await fetchCurrentUser();
-            if (profile) {
+            if (profile && (profile.id || profile.email)) {
               setUser(profile);
               setIsAuthenticated(true);
+            } else {
+              await removeAuthToken();
+              setUser(null);
+              setIsAuthenticated(false);
             }
-          } catch {
-            // Token might be expired
+          } catch (authErr) {
+            console.log('Stored token verification failed (expired or invalid):', authErr);
+            await removeAuthToken();
+            setUser(null);
+            setIsAuthenticated(false);
           }
+        } else {
+          setUser(null);
+          setIsAuthenticated(false);
         }
 
         // Fetch dynamic backend data if available
@@ -196,7 +209,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
         if (notifs?.length) setNotifications(notifs);
       } catch (err) {
-        console.log('App init fallback to offline mock data:', err);
+        console.log('App init error:', err);
+      } finally {
+        setIsAuthLoading(false);
       }
     };
     initApp();
@@ -315,42 +330,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const login = async (email: string, pass: string): Promise<boolean> => {
-    try {
-      const res = await loginUser(email, pass);
-      if (res.user) {
-        setUser(res.user);
-        setIsAuthenticated(true);
-        return true;
-      }
-      return false;
-    } catch {
-      // Mock login for offline testing
+  const login = async (identifier: string, pass: string): Promise<void> => {
+    const res = await loginUser(identifier, pass);
+    if (res?.user) {
+      setUser(res.user);
       setIsAuthenticated(true);
-      return true;
+    } else {
+      throw new Error('Authentication failed');
     }
   };
 
-  const register = async (name: string, email: string, pass: string): Promise<boolean> => {
-    try {
-      const res = await registerUser({ name, email, password: pass });
-      if (res.user) {
-        setUser(res.user);
-        setIsAuthenticated(true);
-        return true;
-      }
-      return false;
-    } catch {
-      setUser((prev) => ({ ...prev, name, email }));
+  const register = async (payload: RegisterPayload): Promise<void> => {
+    const res = await registerUser(payload);
+    if (res?.user) {
+      setUser(res.user);
       setIsAuthenticated(true);
-      return true;
+    } else {
+      throw new Error('Account creation failed');
     }
   };
 
   const logout = async () => {
     await removeAuthToken();
+    setUser(null);
     setIsAuthenticated(false);
-    setUser(INITIAL_USER);
   };
 
   const addAppointment = async (aptData: Partial<Appointment>): Promise<Appointment> => {
@@ -485,7 +488,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateUser = (data: Partial<UserProfile>) => {
-    setUser((prev) => ({ ...prev, ...data }));
+    setUser((prev) => (prev ? { ...prev, ...data } : null));
+  };
+
+  const updateUserProfile = async (data: Partial<UserProfile>): Promise<UserProfile> => {
+    const updated = await updateProfileApi(data);
+    setUser(updated);
+    return updated;
   };
 
   return (
@@ -500,6 +509,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         goBack,
         activeTab,
         setActiveTab,
+        isAuthLoading,
         isAuthenticated,
         login,
         register,
@@ -540,6 +550,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleFavoriteDoctor,
         user,
         updateUser,
+        updateUserProfile,
         searchQuery,
         setSearchQuery,
         bookingDraft,

@@ -13,8 +13,21 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.sahatak.telemedicine"
+      "bundleIdentifier": "com.sahatak.telemedicine",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Sahatak needs camera access so you can take and upload a profile photo.",
+        "NSPhotoLibraryUsageDescription": "Sahatak needs photo library access so you can select and upload a profile photo."
+      }
     },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you choose a profile picture.",
+          "cameraPermission": "The app accesses your camera to let you capture a profile picture."
+        }
+      ]
+    ],
     "android": {
       "package": "com.sahatak.telemedicine",
       "versionCode": 1,
