@@ -182,6 +182,14 @@ export const SignupScreen: React.FC = () => {
       // Automatically transitions to main app when isAuthenticated becomes true
     } catch (err: any) {
       console.log('Registration error:', err);
+Alert.alert('DEBUG INFO', JSON.stringify({
+  message: err?.message,
+  code: err?.code,
+  hasResponse: !!err?.response,
+  status: err?.response?.status,
+  baseURL: err?.config?.baseURL,
+  url: err?.config?.url,
+}, null, 2));
       if (err?.response?.status === 409) {
         setErrorMessage(
           t(

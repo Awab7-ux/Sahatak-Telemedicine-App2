@@ -4,10 +4,10 @@
     "slug": "sahatak-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/sahatak-logo.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/sahatak-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#0284c7"
     },
@@ -26,13 +26,15 @@
           "photosPermission": "The app accesses your photos to let you choose a profile picture.",
           "cameraPermission": "The app accesses your camera to let you capture a profile picture."
         }
-      ]
+      ],
+      "./withAndroidCleartextTraffic.js"
     ],
     "android": {
       "package": "com.sahatak.telemedicine",
       "versionCode": 1,
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/android-icon-foreground.png",
+        "foregroundImage": "./assets/sahatak-logo.png",
         "backgroundColor": "#0284c7"
       },
       "permissions": [
@@ -50,7 +52,7 @@
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/sahatak-logo.png"
     },
     "extra": {
       "eas": {
