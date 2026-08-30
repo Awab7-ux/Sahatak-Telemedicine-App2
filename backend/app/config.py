@@ -7,7 +7,7 @@ class Config:
 
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         "DATABASE_URL",
-        "postgresql://sahatak_user:sahatak_pass@localhost:5432/sahatak_db",
+        "sqlite:///sahatak.db",
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 

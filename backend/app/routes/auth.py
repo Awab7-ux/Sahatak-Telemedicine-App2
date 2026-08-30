@@ -27,6 +27,7 @@ def register():
         age=data.get("age"),
         location=data.get("location"),
         location_ar=data.get("locationAr"),
+        avatar=data.get("avatar"),
     )
     user.set_password(data["password"])
     db.session.add(user)
