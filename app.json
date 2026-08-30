@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "8c9a85c3-a38b-41ed-8282-73c91531017b"
+      }
+    },
+    "android": {
+      "package": "com.sahatak.telemedicine"
+    }
+  }
+}

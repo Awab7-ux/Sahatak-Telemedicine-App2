@@ -1,0 +1,91 @@
+declare module 'lucide-react-native' {
+  import { ComponentType } from 'react';
+  import { SvgProps } from 'react-native-svg';
+
+  export interface IconProps extends SvgProps {
+    size?: number | string;
+    color?: string;
+    strokeWidth?: number;
+    absoluteStrokeWidth?: boolean;
+  }
+
+  export type Icon = ComponentType<IconProps>;
+
+  export const Stethoscope: Icon;
+  export const Smile: Icon;
+  export const Brain: Icon;
+  export const Eye: Icon;
+  export const Sparkles: Icon;
+  export const HeartPulse: Icon;
+  export const Activity: Icon;
+  export const ShieldCheck: Icon;
+  export const Pill: Icon;
+  export const Heart: Icon;
+  export const Calendar: Icon;
+  export const Video: Icon;
+  export const VideoOff: Icon;
+  export const MapPin: Icon;
+  export const Clock: Icon;
+  export const Star: Icon;
+  export const FileText: Icon;
+  export const User: Icon;
+  export const ShoppingBag: Icon;
+  export const Search: Icon;
+  export const Bell: Icon;
+  export const ChevronDown: Icon;
+  export const ChevronLeft: Icon;
+  export const ChevronRight: Icon;
+  export const MessageSquare: Icon;
+  export const Building2: Icon;
+  export const Building: Icon;
+  export const Plus: Icon;
+  export const Minus: Icon;
+  export const ArrowRight: Icon;
+  export const ArrowLeft: Icon;
+  export const Users: Icon;
+  export const Award: Icon;
+  export const CreditCard: Icon;
+  export const Phone: Icon;
+  export const PhoneCall: Icon;
+  export const PhoneOff: Icon;
+  export const CheckCircle2: Icon;
+  export const Mic: Icon;
+  export const MicOff: Icon;
+  export const Volume2: Icon;
+  export const VolumeX: Icon;
+  export const AlertTriangle: Icon;
+  export const AlertCircle: Icon;
+  export const Send: Icon;
+  export const X: Icon;
+  export const Paperclip: Icon;
+  export const Image: Icon;
+  export const CheckCheck: Icon;
+  export const ShoppingCart: Icon;
+  export const Check: Icon;
+  export const UploadCloud: Icon;
+  export const FileCheck: Icon;
+  export const Truck: Icon;
+  export const Trash2: Icon;
+  export const Tag: Icon;
+  export const Navigation: Icon;
+  export const Home: Icon;
+  export const Download: Icon;
+  export const Droplet: Icon;
+  export const Droplets: Icon;
+  export const Scale: Icon;
+  export const Ruler: Icon;
+  export const Shield: Icon;
+  export const LogOut: Icon;
+  export const LogIn: Icon;
+  export const Edit2: Icon;
+  export const Globe: Icon;
+  export const HelpCircle: Icon;
+  export const Share2: Icon;
+  export const Mail: Icon;
+  export const Lock: Icon;
+  export const RotateCcw: Icon;
+
+  const icons: { [key: string]: Icon };
+  export default icons;
+}
+
