@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -35,6 +35,7 @@ export const DoctorChatScreen: React.FC = () => {
     activeChatDoctor,
     chatMessages,
     sendChatMessage,
+    loadChatHistory,
     navigateTo,
     addToCart,
     products,
@@ -48,6 +49,13 @@ export const DoctorChatScreen: React.FC = () => {
   const scrollViewRef = useRef<ScrollView>(null);
 
   const BackIcon = isRtl ? ChevronRight : ChevronLeft;
+
+  // Load real message history from the backend when screen mounts
+  useEffect(() => {
+    if (doctor?.id) {
+      loadChatHistory(doctor.id);
+    }
+  }, [doctor?.id]);
 
   const handleSendMessage = () => {
     if (!inputText.trim()) return;

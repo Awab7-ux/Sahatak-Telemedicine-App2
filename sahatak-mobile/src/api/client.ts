@@ -4,17 +4,36 @@ import { Platform } from 'react-native';
 
 const TOKEN_KEY = 'sahatak_jwt_token';
 
-// For Android emulator: 10.0.2.2:5000/api
-// For physical device: use machine's local IP (e.g. 192.168.1.X:5000/api)
-// For Web/iOS simulator: localhost:5000/api
+// ------------------------------------------------------------
+// Base URL Configuration
+// For Android emulator : http://10.0.2.2:5000/api
+// For physical device  : http://<YOUR_LAN_IP>:5000/api
+//                        (e.g. http://192.168.100.7:5000/api)
+// For iOS simulator    : http://localhost:5000/api
+// Override at runtime via EXPO_PUBLIC_API_URL env variable.
+// ------------------------------------------------------------
 const DEFAULT_BASE_URL = Platform.select({
-  android: 'http://10.0.2.2:5000/api',
-  ios: 'http://localhost:5000/api',
-  default: 'http://localhost:5000/api',
+  android: 'http://192.168.100.7:5000/api',
+  ios: 'http://192.168.100.7:5000/api',
+  default: 'http://192.168.100.7:5000/api',
 });
 
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || DEFAULT_BASE_URL;
 export const SERVER_HOST = API_BASE_URL.replace(/\/api\/?$/, '');
+
+// ------------------------------------------------------------
+// Real Backend Response Envelope
+// Every successful response from Sahatak-2/backend is wrapped:
+//   { success, message, timestamp, status_code, data, meta? }
+// This helper unwraps the `data` field.
+// ------------------------------------------------------------
+export function unwrapData<T>(responseData: any): T {
+  if (responseData && typeof responseData === 'object' && 'data' in responseData) {
+    return responseData.data as T;
+  }
+  // Fallback: return as-is (handles legacy / non-wrapped responses)
+  return responseData as T;
+}
 
 export const resolveImageUrl = (url?: string): string => {
   if (!url) return '';

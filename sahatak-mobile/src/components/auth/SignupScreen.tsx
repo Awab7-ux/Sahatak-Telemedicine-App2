@@ -51,6 +51,9 @@ export const SignupScreen: React.FC = () => {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [showPhotoModal, setShowPhotoModal] = useState<boolean>(false);
 
+  // Role selector: patient or doctor
+  const [userType, setUserType] = useState<'patient' | 'doctor'>('patient');
+
   const [name, setName] = useState<string>('');
   const [nameAr, setNameAr] = useState<string>('');
   const [email, setEmail] = useState<string>('');
@@ -59,6 +62,11 @@ export const SignupScreen: React.FC = () => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [age, setAge] = useState<string>('');
   const [gender, setGender] = useState<'Male' | 'Female'>('Male');
+
+  // Doctor-specific fields (shown only when userType === 'doctor')
+  const [licenseNumber, setLicenseNumber] = useState<string>('');
+  const [specialty, setSpecialty] = useState<string>('');
+  const [yearsOfExperience, setYearsOfExperience] = useState<string>('');
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -153,19 +161,51 @@ export const SignupScreen: React.FC = () => {
       return;
     }
 
+    // Doctor-specific validation
+    if (userType === 'doctor') {
+      if (!licenseNumber.trim()) {
+        setErrorMessage(
+          t('Please enter your medical license number.', 'يرجى إدخال رقم الترخيص الطبي.')
+        );
+        return;
+      }
+      if (!specialty.trim()) {
+        setErrorMessage(
+          t('Please enter your medical specialty.', 'يرجى إدخال تخصصك الطبي.')
+        );
+        return;
+      }
+    }
+
     setIsLoading(true);
     try {
-      // Step 1: Register user on backend
-      await register({
-        name: cleanName,
-        nameAr: nameAr.trim() || undefined,
+      // Build the backend-compatible payload
+      const basePayload = {
+        full_name: cleanName,
         email: cleanEmail,
         phone: cleanPhone,
         password,
-        gender,
-        genderAr: gender === 'Male' ? 'ذكر' : 'أنثى',
-        age: age ? parseInt(age, 10) : undefined,
-      });
+        user_type: userType,
+      };
+
+      const payload =
+        userType === 'doctor'
+          ? {
+              ...basePayload,
+              user_type: 'doctor' as const,
+              license_number: licenseNumber.trim(),
+              specialty: specialty.trim(),
+              years_of_experience: yearsOfExperience ? parseInt(yearsOfExperience, 10) : 0,
+            }
+          : {
+              ...basePayload,
+              user_type: 'patient' as const,
+              age: age ? parseInt(age, 10) : 25,
+              gender: (gender === 'Female' ? 'female' : 'male') as 'male' | 'female',
+            };
+
+      // Step 1: Register user on backend
+      await register(payload);
 
       // Step 2: If a profile photo was selected, upload it immediately
       if (avatarUri) {
@@ -182,14 +222,6 @@ export const SignupScreen: React.FC = () => {
       // Automatically transitions to main app when isAuthenticated becomes true
     } catch (err: any) {
       console.log('Registration error:', err);
-Alert.alert('DEBUG INFO', JSON.stringify({
-  message: err?.message,
-  code: err?.code,
-  hasResponse: !!err?.response,
-  status: err?.response?.status,
-  baseURL: err?.config?.baseURL,
-  url: err?.config?.url,
-}, null, 2));
       if (err?.response?.status === 409) {
         setErrorMessage(
           t(
@@ -205,13 +237,14 @@ Alert.alert('DEBUG INFO', JSON.stringify({
           )
         );
       } else {
-        const serverMsg = err?.response?.data?.error || err?.message || 'Registration failed';
+        const serverMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Registration failed';
         setErrorMessage(serverMsg);
       }
     } finally {
       setIsLoading(false);
     }
   };
+
 
   return (
     <KeyboardAvoidingView
@@ -309,6 +342,33 @@ Alert.alert('DEBUG INFO', JSON.stringify({
 
         {/* Form Card */}
         <View style={styles.formCard}>
+          {/* ── Role Selector: Patient / Doctor ── */}
+          <View style={styles.fieldGroup}>
+            <Text style={[styles.fieldLabel, { textAlign: isRtl ? 'right' : 'left' }]}>
+              {t('I am registering as', 'أسجّل باعتباري')} *
+            </Text>
+            <View style={[styles.genderToggle, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setUserType('patient')}
+                style={[styles.genderBtn, userType === 'patient' && styles.genderBtnActive]}
+              >
+                <Text style={[styles.genderBtnText, userType === 'patient' && styles.genderBtnTextActive]}>
+                  {t('Patient', 'مريض')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setUserType('doctor')}
+                style={[styles.genderBtn, userType === 'doctor' && styles.genderBtnActive]}
+              >
+                <Text style={[styles.genderBtnText, userType === 'doctor' && styles.genderBtnTextActive]}>
+                  {t('Doctor', 'طبيب')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           {/* Full Name */}
           <View style={styles.fieldGroup}>
             <Text style={[styles.fieldLabel, { textAlign: isRtl ? 'right' : 'left' }]}>
@@ -421,67 +481,113 @@ Alert.alert('DEBUG INFO', JSON.stringify({
             </View>
           </View>
 
-          {/* Optional Row: Gender & Age */}
-          <View style={[styles.rowFields, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-            <View style={{ flex: 1, gap: 6 }}>
-              <Text style={[styles.fieldLabel, { textAlign: isRtl ? 'right' : 'left' }]}>
-                {t('Gender', 'الجنس')}
-              </Text>
-              <View style={[styles.genderToggle, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => setGender('Male')}
-                  style={[
-                    styles.genderBtn,
-                    gender === 'Male' && styles.genderBtnActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.genderBtnText,
-                      gender === 'Male' && styles.genderBtnTextActive,
-                    ]}
-                  >
-                    {t('Male', 'ذكر')}
-                  </Text>
-                </TouchableOpacity>
 
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => setGender('Female')}
-                  style={[
-                    styles.genderBtn,
-                    gender === 'Female' && styles.genderBtnActive,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.genderBtnText,
-                      gender === 'Female' && styles.genderBtnTextActive,
-                    ]}
+          {/* ── Doctor-specific fields (hidden for patients) ── */}
+          {userType === 'doctor' && (
+            <>
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { textAlign: isRtl ? 'right' : 'left' }]}>
+                  {t('Medical License Number', 'رقم الترخيص الطبي')} *
+                </Text>
+                <View style={[styles.inputBox, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                  <User size={18} color={Colors.slate[400]} />
+                  <TextInput
+                    value={licenseNumber}
+                    onChangeText={(text) => {
+                      setLicenseNumber(text);
+                      if (errorMessage) setErrorMessage(null);
+                    }}
+                    placeholder={t('e.g. SA-12345', 'مثال: SA-12345')}
+                    placeholderTextColor={Colors.slate[400]}
+                    autoCapitalize="characters"
+                    style={[styles.textInput, { textAlign: isRtl ? 'right' : 'left' }]}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { textAlign: isRtl ? 'right' : 'left' }]}>
+                  {t('Medical Specialty', 'التخصص الطبي')} *
+                </Text>
+                <View style={[styles.inputBox, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                  <User size={18} color={Colors.slate[400]} />
+                  <TextInput
+                    value={specialty}
+                    onChangeText={(text) => {
+                      setSpecialty(text);
+                      if (errorMessage) setErrorMessage(null);
+                    }}
+                    placeholder={t('e.g. Cardiology', 'مثال: أمراض القلب')}
+                    placeholderTextColor={Colors.slate[400]}
+                    style={[styles.textInput, { textAlign: isRtl ? 'right' : 'left' }]}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text style={[styles.fieldLabel, { textAlign: isRtl ? 'right' : 'left' }]}>
+                  {t('Years of Experience', 'سنوات الخبرة')}
+                </Text>
+                <View style={styles.inputBox}>
+                  <TextInput
+                    value={yearsOfExperience}
+                    onChangeText={setYearsOfExperience}
+                    placeholder="5"
+                    placeholderTextColor={Colors.slate[400]}
+                    keyboardType="numeric"
+                    style={[styles.textInput, { textAlign: 'center' }]}
+                  />
+                </View>
+              </View>
+            </>
+          )}
+
+          {/* ── Patient-specific fields: Gender & Age (hidden for doctors) ── */}
+          {userType === 'patient' && (
+            <View style={[styles.rowFields, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text style={[styles.fieldLabel, { textAlign: isRtl ? 'right' : 'left' }]}>
+                  {t('Gender', 'الجنس')}
+                </Text>
+                <View style={[styles.genderToggle, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setGender('Male')}
+                    style={[styles.genderBtn, gender === 'Male' && styles.genderBtnActive]}
                   >
-                    {t('Female', 'أنثى')}
-                  </Text>
-                </TouchableOpacity>
+                    <Text style={[styles.genderBtnText, gender === 'Male' && styles.genderBtnTextActive]}>
+                      {t('Male', 'ذكر')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setGender('Female')}
+                    style={[styles.genderBtn, gender === 'Female' && styles.genderBtnActive]}
+                  >
+                    <Text style={[styles.genderBtnText, gender === 'Female' && styles.genderBtnTextActive]}>
+                      {t('Female', 'أنثى')}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={{ width: 100, gap: 6 }}>
+                <Text style={[styles.fieldLabel, { textAlign: isRtl ? 'right' : 'left' }]}>
+                  {t('Age', 'العمر')}
+                </Text>
+                <View style={styles.inputBox}>
+                  <TextInput
+                    value={age}
+                    onChangeText={setAge}
+                    placeholder="30"
+                    placeholderTextColor={Colors.slate[400]}
+                    keyboardType="numeric"
+                    style={[styles.textInput, { textAlign: 'center' }]}
+                  />
+                </View>
               </View>
             </View>
-
-            <View style={{ width: 100, gap: 6 }}>
-              <Text style={[styles.fieldLabel, { textAlign: isRtl ? 'right' : 'left' }]}>
-                {t('Age', 'العمر')}
-              </Text>
-              <View style={styles.inputBox}>
-                <TextInput
-                  value={age}
-                  onChangeText={setAge}
-                  placeholder="30"
-                  placeholderTextColor={Colors.slate[400]}
-                  keyboardType="numeric"
-                  style={[styles.textInput, { textAlign: 'center' }]}
-                />
-              </View>
-            </View>
-          </View>
+          )}
 
           {/* Submit Button */}
           <TouchableOpacity
@@ -495,13 +601,25 @@ Alert.alert('DEBUG INFO', JSON.stringify({
             ) : (
               <View style={[styles.btnRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                 <Text style={styles.submitButtonText}>
-                  {t('Create Account & Sign In', 'إنشاء الحساب والمتابعة')}
+                  {t('Create Account', 'إنشاء الحساب')}
                 </Text>
                 <Arrow size={18} color={Colors.white} />
               </View>
             )}
           </TouchableOpacity>
+
+          {/* Email Verification Notice */}
+          <View style={[styles.verifyNotice, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+            <Mail size={16} color="#0369a1" style={{ marginTop: 1 }} />
+            <Text style={[styles.verifyNoticeText, { textAlign: isRtl ? 'right' : 'left' }]}>
+              {t(
+                'After registration, you will receive a verification email. Please check your inbox (and spam folder) and click the link to activate your account before logging in.',
+                'بعد التسجيل ستصلك رسالة بريد إلكتروني للتحقق من حسابك.\nيرجى فتح بريدك الإلكتروني (أو مجلد Spam) والنقر على رابط التفعيل قبل تسجيل الدخول.'
+              )}
+            </Text>
+          </View>
         </View>
+
 
         {/* Footer */}
         <View style={styles.footerSection}>
@@ -877,6 +995,22 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.slate[400],
     marginTop: 1,
+  },
+  verifyNotice: {
+    backgroundColor: '#e0f2fe',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'flex-start',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+  },
+  verifyNoticeText: {
+    flex: 1,
+    fontSize: 11,
+    color: '#0c4a6e',
+    lineHeight: 17,
+    fontWeight: '500',
   },
 });
 

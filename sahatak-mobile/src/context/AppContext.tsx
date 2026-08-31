@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { I18nManager } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Updates from 'expo-updates';
+import { socketService } from '../services/socketService';
 
 import {
   Language,
@@ -36,6 +37,7 @@ import { fetchDoctorsApi } from '../api/doctors';
 import { fetchProductsApi } from '../api/pharmacy';
 import { fetchAppointmentsApi, createAppointmentApi, cancelAppointmentApi } from '../api/appointments';
 import { fetchNotificationsApi, markNotificationReadApi, markAllNotificationsReadApi } from '../api/notifications';
+import { sendChatMessageApi, getOrCreateConversationApi, fetchChatMessagesApi } from '../api/chat';
 
 interface AppContextType {
   // Localization
@@ -96,7 +98,8 @@ interface AppContextType {
 
   // Chat
   chatMessages: ChatMessage[];
-  sendChatMessage: (text: string, type?: 'text' | 'image' | 'prescription' | 'report' | 'voice') => void;
+  sendChatMessage: (text: string, type?: 'text' | 'image' | 'prescription' | 'report' | 'voice') => Promise<void>;
+  loadChatHistory: (doctorId: string) => Promise<void>;
   activeChatDoctor: Doctor;
   setActiveChatDoctor: (doctor: Doctor) => void;
 
@@ -156,6 +159,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [bookingDraft, setBookingDraft] = useState<Partial<Appointment>>({});
   const [isVideoCallActive, setIsVideoCallActive] = useState<boolean>(false);
+
+  // Ref to track the conversation ID currently open in DoctorChatScreen
+  const activeChatConversationId = useRef<string>('');
 
   // Initialize Language & Validate Token from SecureStore
   useEffect(() => {
@@ -335,6 +341,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (res?.user) {
       setUser(res.user);
       setIsAuthenticated(true);
+      // Connect Socket.IO with the fresh JWT token
+      if (res.token) {
+        socketService.connect(res.token);
+      }
     } else {
       throw new Error('Authentication failed');
     }
@@ -345,12 +355,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (res?.user) {
       setUser(res.user);
       setIsAuthenticated(true);
+      if (res.token) {
+        socketService.connect(res.token);
+      }
     } else {
       throw new Error('Account creation failed');
     }
   };
 
   const logout = async () => {
+    socketService.disconnect();
+    activeChatConversationId.current = '';
     await removeAuthToken();
     setUser(null);
     setIsAuthenticated(false);
@@ -446,39 +461,87 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
 
-  const sendChatMessage = (text: string, type: 'text' | 'image' | 'prescription' | 'report' | 'voice' = 'text') => {
-    const newMsg: ChatMessage = {
+  /**
+   * Send a chat message to the active doctor.
+   *
+   * Strategy:
+   *  1. Optimistically add the message to local state so the UI is instant.
+   *  2. Resolve the conversation ID (get-or-create via REST).
+   *  3. If socket is connected → emit 'new_message' for real-time delivery.
+   *  4. Always persist via REST POST as the reliable channel.
+   *  5. Register a socket listener (once per conversation) so incoming
+   *     doctor replies land in chatMessages automatically.
+   */
+  const sendChatMessage = async (
+    text: string,
+    type: 'text' | 'image' | 'prescription' | 'report' | 'voice' = 'text'
+  ) => {
+    if (!text.trim()) return;
+
+    // 1. Optimistic local update
+    const optimisticMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
       sender: 'patient',
       text,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       type,
     };
-    setChatMessages((prev) => [...prev, newMsg]);
+    setChatMessages((prev) => [...prev, optimisticMsg]);
 
-    setTimeout(() => {
-      const responsesEn = [
-        "Thank you for sharing that information. I've noted it down in your digital chart.",
-        "Understood. If the symptoms continue for more than 48 hours, we can schedule an in-clinic checkup.",
-        "I will review your test values right now. Please continue following the prescribed dosage.",
-        "Your recovery progress looks very encouraging! Keep resting well.",
-      ];
-      const responsesAr = [
-        "شكراً لمشاركتك هذه التفاصيل. تم تدوين الملاحظة في سجلك الطبي الرقمي.",
-        "مفهوم تماماً. في حال استمرت الأعراض لأكثر من 48 ساعة يرجى إبلاغي لجدولة فحص سريري.",
-        "سأقوم بمراجعة نتائج التحاليل فوراً. يرجى الاستمرار على الجرعة الموصوفة.",
-        "مؤشرات التحسن ممتازة جداً! واصل أخذ قسط كافٍ من الراحة وشرب السوائل.",
-      ];
-      const randIdx = Math.floor(Math.random() * responsesEn.length);
-      const doctorReply: ChatMessage = {
-        id: `msg-${Date.now() + 1}`,
-        sender: 'doctor',
-        text: lang === 'ar' ? responsesAr[randIdx] : responsesEn[randIdx],
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        type: 'text',
-      };
-      setChatMessages((prev) => [...prev, doctorReply]);
-    }, 1200);
+    try {
+      // 2. Get or create conversation
+      const doctorId = activeChatDoctor?.id ?? '';
+      const { conversationId } = await getOrCreateConversationApi(doctorId);
+
+      if (conversationId && conversationId !== activeChatConversationId.current) {
+        // Join the Socket.IO room and register incoming message listener (once)
+        activeChatConversationId.current = conversationId;
+        socketService.joinConversation(conversationId);
+
+        // Register listener: push incoming doctor messages into state in real-time.
+        // Signature: onMessage(cb: (msg: IncomingMessage, convId: string) => void)
+        socketService.onMessage((msg, _convId) => {
+          // Filter to this conversation and ignore our own echoes
+          if (String(msg.conversation_id) !== String(conversationId)) return;
+          if (msg.sender_type === 'patient') return;
+          const incoming: ChatMessage = {
+            id: String(msg.id ?? `msg-${Date.now()}`),
+            sender: 'doctor',
+            text: msg.content ?? '',
+            timestamp: msg.created_at
+              ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            type: (msg.message_type as any) ?? 'text',
+          };
+          setChatMessages((prev) => [...prev, incoming]);
+        });
+      }
+
+      // 3. Persist via REST — the backend broadcasts via socket after saving
+      await sendChatMessageApi(doctorId, { text, type }, user?.id);
+    } catch (err) {
+      // Non-fatal: optimistic message is already shown
+      console.warn('[sendChatMessage] Backend error (message shown locally):', err);
+    }
+  };
+
+
+  /**
+   * Load real message history for a conversation with a specific doctor.
+   * Called by DoctorChatScreen on mount. Falls back gracefully if offline.
+   */
+  const loadChatHistory = async (doctorId: string): Promise<void> => {
+    if (!doctorId) return;
+    try {
+      const msgs = await fetchChatMessagesApi(doctorId, user?.id);
+      if (msgs.length > 0) {
+        // Replace local state with the real fetched history
+        setChatMessages(msgs);
+      }
+    } catch {
+      // Backend unreachable — leave existing chatMessages intact (mocks or cached)
+      console.warn('[loadChatHistory] Could not fetch chat history, keeping local messages');
+    }
   };
 
   const toggleFavoriteDoctor = (id: string) => {
@@ -544,6 +607,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markAllNotificationsRead,
         chatMessages,
         sendChatMessage,
+        loadChatHistory,
         activeChatDoctor,
         setActiveChatDoctor,
         favorites,

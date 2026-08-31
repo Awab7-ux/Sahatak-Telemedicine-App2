@@ -43,7 +43,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ visible, onClose }) => {
         Alert.alert(t('Success', 'نجاح'), t('Logged in successfully!', 'تم تسجيل الدخول بنجاح!'));
         onClose();
       } else {
-        await register({ name, email, phone: '+966500000000', password });
+        await register({ full_name: name, email, phone: '+966500000000', password, user_type: 'patient', age: 25, gender: 'male' });
         Alert.alert(t('Success', 'نجاح'), t('Account created successfully!', 'تم إنشاء الحساب بنجاح!'));
         onClose();
       }

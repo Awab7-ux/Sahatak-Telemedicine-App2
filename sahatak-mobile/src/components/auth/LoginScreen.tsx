@@ -41,11 +41,13 @@ export const LoginScreen: React.FC = () => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isVerificationError, setIsVerificationError] = useState<boolean>(false);
 
   const Arrow = isRtl ? ArrowLeft : ArrowRight;
 
   const handleLogin = async () => {
     setErrorMessage(null);
+    setIsVerificationError(false);
 
     const cleanIdentifier = identifier.trim();
     if (!cleanIdentifier || !password) {
@@ -64,28 +66,49 @@ export const LoginScreen: React.FC = () => {
       // Navigation is handled automatically by AppNavigator reacting to isAuthenticated
     } catch (err: any) {
       console.log('Login error:', err);
-      if (err?.response?.status === 401) {
+
+      // ── Special case: Email not verified yet ──────────────────────────────
+      const errorCode = err?.response?.data?.error_code ?? err?.response?.data?.error ?? '';
+      if (
+        errorCode === 'USER_NOT_VERIFIED' ||
+        err?.response?.data?.message?.toLowerCase().includes('verif')
+      ) {
+        setIsVerificationError(true);
+        setErrorMessage(
+          t(
+            'Your email address has not been verified yet. Please check your inbox and click the verification link we sent you. Check your spam folder too.',
+            'لم يتم التحقق من بريدك الإلكتروني بعد.\n\nيرجى فتح بريدك الإلكتروني والضغط على رابط التفعيل الذي أرسلناه إليك عند التسجيل.\n\nإذا لم تجد الرسالة، تحقق من مجلد البريد المزعج (Spam).'
+          )
+        );
+      }
+      // ── Wrong credentials ──────────────────────────────────────────────────
+      else if (err?.response?.status === 401) {
         setErrorMessage(
           t(
             'Invalid credentials. Please check your email/phone and password.',
             'بيانات الدخول غير صحيحة. يرجى التأكد من البريد/الهاتف وكلمة المرور.'
           )
         );
-      } else if (err?.code === 'ECONNABORTED' || err?.message?.includes('Network Error') || !err?.response) {
+      }
+      // ── Network / server unreachable ───────────────────────────────────────
+      else if (err?.code === 'ECONNABORTED' || err?.message?.includes('Network Error') || !err?.response) {
         setErrorMessage(
           t(
-            'Network error: Unable to reach Sahatak server. Please check your internet connection and backend status.',
-            'خطأ في الاتصال: تعذر الوصول إلى خادم صحتك. يرجى التحقق من اتصال الإنترنت وتشغيل الخادم.'
+            'Network error: Unable to reach Sahatak server. Please check your internet connection and that the backend is running.',
+            'خطأ في الاتصال: تعذّر الوصول إلى خادم صحتك.\n\nيرجى التأكد من:\n١. أن اتصال الإنترنت يعمل\n٢. أن تطبيق الخادم (Backend) يعمل على جهاز الكمبيوتر\n٣. أن الهاتف والكمبيوتر على نفس الشبكة (Wi-Fi)'
           )
         );
-      } else {
-        const serverMsg = err?.response?.data?.error || err?.message || 'Login failed';
+      }
+      // ── Generic error ──────────────────────────────────────────────────────
+      else {
+        const serverMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Login failed';
         setErrorMessage(serverMsg);
       }
     } finally {
       setIsLoading(false);
     }
   };
+
 
   return (
     <KeyboardAvoidingView
@@ -136,11 +159,27 @@ export const LoginScreen: React.FC = () => {
           </Text>
         </View>
 
-        {/* Error Alert Banner */}
+        {/* Error / Verification Alert Banner */}
         {errorMessage && (
-          <View style={[styles.errorBanner, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-            <AlertCircle size={18} color={Colors.danger} style={{ marginTop: 2 }} />
-            <Text style={[styles.errorBannerText, { textAlign: isRtl ? 'right' : 'left' }]}>
+          <View
+            style={[
+              styles.errorBanner,
+              isVerificationError && styles.verifyBanner,
+              { flexDirection: isRtl ? 'row-reverse' : 'row' },
+            ]}
+          >
+            {isVerificationError ? (
+              <Mail size={20} color="#d97706" style={{ marginTop: 2 }} />
+            ) : (
+              <AlertCircle size={18} color={Colors.danger} style={{ marginTop: 2 }} />
+            )}
+            <Text
+              style={[
+                styles.errorBannerText,
+                isVerificationError && styles.verifyBannerText,
+                { textAlign: isRtl ? 'right' : 'left' },
+              ]}
+            >
               {errorMessage}
             </Text>
           </View>
@@ -326,6 +365,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.dangerDark,
     lineHeight: 18,
+  },
+  verifyBanner: {
+    backgroundColor: '#fffbeb',
+    borderColor: '#fcd34d',
+  },
+  verifyBannerText: {
+    color: '#92400e',
   },
   formCard: {
     backgroundColor: Colors.white,
