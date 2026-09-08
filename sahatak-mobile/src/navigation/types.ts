@@ -26,6 +26,7 @@ export type RootStackParamList = {
   BookingFlow: { doctor?: Doctor; consultationType?: ConsultationType } | undefined;
   VideoConsultation: { appointment?: Appointment; doctor?: Doctor } | undefined;
   DoctorChat: { doctor?: Doctor; doctorId?: string } | undefined;
+  Conversations: undefined;
   Pharmacy: { categoryId?: string; query?: string } | undefined;
   MedicineDetail: { product?: Product; productId?: string } | undefined;
   Cart: undefined;

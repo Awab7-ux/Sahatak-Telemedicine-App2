@@ -28,6 +28,7 @@ export const MyAppointmentsScreen: React.FC = () => {
     cancelAppointment,
     navigateTo,
     setActiveAppointment,
+    startAppointmentConversation,
     isRtl,
     t,
   } = useApp();
@@ -42,7 +43,10 @@ export const MyAppointmentsScreen: React.FC = () => {
   };
 
   const handleChat = (apt: Appointment) => {
-    navigateTo('chat_doctor', { chatDoctor: apt.doctor });
+    // Try to create (or get) the appointment-linked conversation first; the
+    // backend seeds a system message there. Falls back to opening the chat
+    // directly if the endpoint fails (friendly error shown via Alert).
+    startAppointmentConversation(apt.id, apt.doctor);
   };
 
   return (

@@ -13,6 +13,7 @@ import { DoctorDetailScreen } from '../components/doctors/DoctorDetailScreen';
 import { BookingFlowModal } from '../components/booking/BookingFlowModal';
 import { VideoConsultationScreen } from '../components/consultation/VideoConsultationScreen';
 import { DoctorChatScreen } from '../components/chat/DoctorChatScreen';
+import { ConversationsScreen } from '../components/chat/ConversationsScreen';
 import { PharmacyScreen } from '../components/pharmacy/PharmacyScreen';
 import { MedicineDetailScreen } from '../components/pharmacy/MedicineDetailScreen';
 import { CartScreen } from '../components/pharmacy/CartScreen';
@@ -34,6 +35,7 @@ export const AppNavigator: React.FC = () => {
 
   return (
     <Stack.Navigator
+      id={undefined}
       screenOptions={{
         headerShown: false,
         animation: 'slide_from_right',
@@ -60,6 +62,7 @@ export const AppNavigator: React.FC = () => {
             options={{ presentation: 'fullScreenModal' }}
           />
           <Stack.Screen name="DoctorChat" component={DoctorChatScreen} />
+          <Stack.Screen name="Conversations" component={ConversationsScreen} />
           <Stack.Screen name="Pharmacy" component={PharmacyScreen} />
           <Stack.Screen name="MedicineDetail" component={MedicineDetailScreen} />
           <Stack.Screen name="Cart" component={CartScreen} />

@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { I18nManager } from 'react-native';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { I18nManager, AppState, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Updates from 'expo-updates';
 import { socketService } from '../services/socketService';
@@ -30,14 +30,22 @@ import {
 } from '../data/mockData';
 
 import { navigate, goBack as navGoBack } from '../navigation/navigationRef';
-import { getAuthToken, removeAuthToken } from '../api/client';
+import { getAuthToken, removeAuthToken, ApiError } from '../api/client';
 import { fetchCurrentUser, loginUser, registerUser, RegisterPayload } from '../api/auth';
 import { updateProfileApi } from '../api/profile';
 import { fetchDoctorsApi } from '../api/doctors';
 import { fetchProductsApi } from '../api/pharmacy';
 import { fetchAppointmentsApi, createAppointmentApi, cancelAppointmentApi } from '../api/appointments';
 import { fetchNotificationsApi, markNotificationReadApi, markAllNotificationsReadApi } from '../api/notifications';
-import { sendChatMessageApi, getOrCreateConversationApi, fetchChatMessagesApi } from '../api/chat';
+import { sendChatMessageApi, getOrCreateConversationApi, fetchChatMessagesApi, cacheConversationForDoctor, markMessageReadApi } from '../api/chat';
+import {
+  getConversationsApi,
+  getUnreadCountApi,
+  archiveConversationApi,
+  createAppointmentConversationApi,
+  getFriendlyChatError,
+  RawConversation,
+} from '../api/messages';
 
 interface AppContextType {
   // Localization
@@ -100,8 +108,21 @@ interface AppContextType {
   chatMessages: ChatMessage[];
   sendChatMessage: (text: string, type?: 'text' | 'image' | 'prescription' | 'report' | 'voice') => Promise<void>;
   loadChatHistory: (doctorId: string) => Promise<void>;
+  startChatPolling: (doctorId: string) => void;
+  stopChatPolling: () => void;
   activeChatDoctor: Doctor;
   setActiveChatDoctor: (doctor: Doctor) => void;
+  /** Friendly, already-localized error from the last chat action (empty when none). */
+  chatError: string;
+  clearChatError: () => void;
+
+  // Conversations (message threads list)
+  conversations: RawConversation[];
+  unreadTotal: number;
+  refreshConversations: () => Promise<void>;
+  archiveConversation: (conversationId: number | string) => Promise<void>;
+  /** Create (or get) the conversation tied to an appointment, then open chat. */
+  startAppointmentConversation: (appointmentId: string, doctor: Doctor) => Promise<void>;
 
   // Favorites
   favorites: string[];
@@ -154,7 +175,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>(INITIAL_CHAT_MESSAGES);
   const [activeChatDoctor, setActiveChatDoctor] = useState<Doctor>(DOCTORS[0]);
-
+  const [chatError, setChatError] = useState<string>('');
+  const [conversations, setConversations] = useState<RawConversation[]>([]);
+  const [unreadTotal, setUnreadTotal] = useState<number>(0);
   const [favorites, setFavorites] = useState<string[]>(['doc-1', 'doc-3']);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [bookingDraft, setBookingDraft] = useState<Partial<Appointment>>({});
@@ -162,6 +185,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Ref to track the conversation ID currently open in DoctorChatScreen
   const activeChatConversationId = useRef<string>('');
+  const chatPollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const unreadPollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isPollTickInFlightRef = useRef(false);
+  const isUnreadTickInFlightRef = useRef(false);
+  const isAppActiveRef = useRef(true);
 
   // Initialize Language & Validate Token from SecureStore
   useEffect(() => {
@@ -275,6 +303,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setActiveTabState('messages');
         navigate('DoctorChat', { doctor: params?.chatDoctor || activeChatDoctor });
         break;
+      case 'conversations':
+        setActiveTabState('messages');
+        navigate('Conversations');
+        refreshConversations();
+        break;
       case 'pharmacy':
         navigate('Pharmacy', params);
         break;
@@ -322,7 +355,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         navigateTo('home');
         break;
       case 'messages':
-        navigateTo('chat_doctor', { chatDoctor: selectedDoctor || DOCTORS[0] });
+        navigateTo('conversations');
         break;
       case 'cart':
         navigateTo('cart');
@@ -352,6 +385,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const register = async (payload: RegisterPayload): Promise<void> => {
     const res = await registerUser(payload);
+    if (res?.requiresEmailVerification) {
+      // Real backend: accounts start unverified; login is blocked until the
+      // email verification link is clicked. Do NOT authenticate the session.
+      throw new Error(
+        t(
+          'Account created! Please check your email and click the verification link before signing in.',
+          'تم إنشاء الحساب! يرجى فحص بريدك الإلكتروني والضغط على رابط التحقق قبل تسجيل الدخول.'
+        )
+      );
+    }
     if (res?.user) {
       setUser(res.user);
       setIsAuthenticated(true);
@@ -461,16 +504,159 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const unreadNotificationsCount = notifications.filter((n) => !n.read).length;
 
+  /** Client-generated optimistic ids look like `msg-<timestamp>`. */
+  const isOptimisticMessage = (m: ChatMessage): boolean => m.id.startsWith('msg-');
+
+  /**
+   * Merge a full server refresh into local state without duplicates.
+   * Server messages (deduped by id) are the source of truth. Optimistic
+   * local messages are kept only until a matching server message arrives
+   * (matched by sender + text + type), then dropped in favor of the server copy.
+   */
+  const mergeChatMessages = (local: ChatMessage[], server: ChatMessage[]): ChatMessage[] => {
+    const seen = new Set<string>();
+    const dedupedServer = server.filter((m) => {
+      if (seen.has(m.id)) return false;
+      seen.add(m.id);
+      return true;
+    });
+
+    const pendingOptimistic = local.filter(
+      (m) =>
+        isOptimisticMessage(m) &&
+        !dedupedServer.some(
+          (s) => s.sender === m.sender && s.text === m.text && s.type === m.type
+        )
+    );
+
+    return [...dedupedServer, ...pendingOptimistic];
+  };
+
+  const pollChatMessages = async (doctorId: string): Promise<void> => {
+    if (!isAppActiveRef.current) return; // paused while backgrounded
+    if (isPollTickInFlightRef.current) return;
+    isPollTickInFlightRef.current = true;
+    try {
+      const msgs = await fetchChatMessagesApi(doctorId, user?.id);
+      setChatMessages((prev) => mergeChatMessages(prev, msgs));
+      // Mark any incoming unread messages read explicitly (belt & braces —
+      // GET conversation detail already marks read server-side).
+      const unreadIncoming = msgs.filter((m) => m.sender === 'doctor');
+      if (unreadIncoming.length > 0 && activeChatConversationId.current) {
+        unreadIncoming.forEach((m) => {
+          markMessageReadApi(m.id).catch(() => undefined);
+        });
+      }
+    } catch {
+      // Transient poll failure — keep current local messages, next tick retries.
+    } finally {
+      isPollTickInFlightRef.current = false;
+    }
+  };
+
+  /** Start polling every 3 seconds. Safe to call repeatedly. */
+  const startChatPolling = (doctorId: string): void => {
+    stopChatPolling();
+    if (!doctorId) return;
+    pollChatMessages(doctorId);
+    chatPollingIntervalRef.current = setInterval(() => pollChatMessages(doctorId), 3000);
+  };
+
+  /** Stop polling. Safe to call when no interval is running. */
+  const stopChatPolling = (): void => {
+    if (chatPollingIntervalRef.current !== null) {
+      clearInterval(chatPollingIntervalRef.current);
+      chatPollingIntervalRef.current = null;
+    }
+  };
+
+  // ── Conversations list + unread badges ────────────────────────────────
+
+  /** Fetch conversations + total unread badge count (silently fails). */
+  const refreshConversations = useCallback(async (): Promise<void> => {
+    try {
+      const [{ conversations: list }, unread] = await Promise.all([
+        getConversationsApi(1, 50),
+        getUnreadCountApi(),
+      ]);
+      setConversations(list);
+      setUnreadTotal(unread.total_unread);
+    } catch {
+      // Silent — the conversations screen shows its own empty/error state.
+    }
+  }, []);
+
+  /** Poll unread-count every 20s while the app is in the foreground. */
+  const pollUnreadCount = useCallback(async (): Promise<void> => {
+    if (!isAppActiveRef.current || isUnreadTickInFlightRef.current) return;
+    isUnreadTickInFlightRef.current = true;
+    try {
+      const unread = await getUnreadCountApi();
+      setUnreadTotal(unread.total_unread);
+    } catch {
+      // Transient — retry next tick.
+    } finally {
+      isUnreadTickInFlightRef.current = false;
+    }
+  }, []);
+
+  // Pause/resume all polling when the app is backgrounded/foregrounded.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      isAppActiveRef.current = state === 'active';
+    });
+    return () => sub.remove();
+  }, []);
+
+  // Unread badge polling while authenticated.
+  useEffect(() => {
+    if (!isAuthenticated) {
+      if (unreadPollingIntervalRef.current !== null) {
+        clearInterval(unreadPollingIntervalRef.current);
+        unreadPollingIntervalRef.current = null;
+      }
+      return;
+    }
+    refreshConversations();
+    unreadPollingIntervalRef.current = setInterval(pollUnreadCount, 20000);
+    return () => {
+      if (unreadPollingIntervalRef.current !== null) {
+        clearInterval(unreadPollingIntervalRef.current);
+        unreadPollingIntervalRef.current = null;
+      }
+    };
+  }, [isAuthenticated, refreshConversations, pollUnreadCount]);
+
+  const archiveConversation = async (conversationId: number | string): Promise<void> => {
+    await archiveConversationApi(conversationId);
+    setConversations((prev) => prev.filter((c) => String(c.id) !== String(conversationId)));
+    refreshConversations();
+  };
+
+  /**
+   * Create (or get) the conversation tied to an appointment and open the
+   * chat screen with that doctor. Surfaces friendly errors (e.g. trying to
+   * message a doctor you have no relationship with).
+   */
+  const startAppointmentConversation = async (
+    appointmentId: string,
+    doctor: Doctor,
+  ): Promise<void> => {
+    try {
+      const { conversation } = await createAppointmentConversationApi(appointmentId);
+      cacheConversationForDoctor(doctor.id, conversation.id);
+      activeChatConversationId.current = String(conversation.id);
+      setActiveChatDoctor(doctor);
+      navigateTo('chat_doctor', { chatDoctor: doctor });
+    } catch (err) {
+      Alert.alert(t('Cannot open chat', 'تعذر فتح المحادثة'), getFriendlyChatError(err, lang));
+    }
+  };
+
   /**
    * Send a chat message to the active doctor.
-   *
-   * Strategy:
-   *  1. Optimistically add the message to local state so the UI is instant.
-   *  2. Resolve the conversation ID (get-or-create via REST).
-   *  3. If socket is connected → emit 'new_message' for real-time delivery.
-   *  4. Always persist via REST POST as the reliable channel.
-   *  5. Register a socket listener (once per conversation) so incoming
-   *     doctor replies land in chatMessages automatically.
+   * Optimistic local update, then persisted via REST; the next poll tick
+   * confirms the message and delivers any doctor replies.
    */
   const sendChatMessage = async (
     text: string,
@@ -478,7 +664,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   ) => {
     if (!text.trim()) return;
 
-    // 1. Optimistic local update
     const optimisticMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
       sender: 'patient',
@@ -489,42 +674,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setChatMessages((prev) => [...prev, optimisticMsg]);
 
     try {
-      // 2. Get or create conversation
       const doctorId = activeChatDoctor?.id ?? '';
-      const { conversationId } = await getOrCreateConversationApi(doctorId);
-
-      if (conversationId && conversationId !== activeChatConversationId.current) {
-        // Join the Socket.IO room and register incoming message listener (once)
+      const { conversationId } = await getOrCreateConversationApi(
+        doctorId,
+        activeChatDoctor?.userId,
+      );
+      if (conversationId) {
         activeChatConversationId.current = conversationId;
-        socketService.joinConversation(conversationId);
-
-        // Register listener: push incoming doctor messages into state in real-time.
-        // Signature: onMessage(cb: (msg: IncomingMessage, convId: string) => void)
-        socketService.onMessage((msg, _convId) => {
-          // Filter to this conversation and ignore our own echoes
-          if (String(msg.conversation_id) !== String(conversationId)) return;
-          if (msg.sender_type === 'patient') return;
-          const incoming: ChatMessage = {
-            id: String(msg.id ?? `msg-${Date.now()}`),
-            sender: 'doctor',
-            text: msg.content ?? '',
-            timestamp: msg.created_at
-              ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-              : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            type: (msg.message_type as any) ?? 'text',
-          };
-          setChatMessages((prev) => [...prev, incoming]);
-        });
       }
-
-      // 3. Persist via REST — the backend broadcasts via socket after saving
       await sendChatMessageApi(doctorId, { text, type }, user?.id);
+      setChatError('');
+      // No special post-send handling — the next poll tick confirms the message.
     } catch (err) {
-      // Non-fatal: optimistic message is already shown
-      console.warn('[sendChatMessage] Backend error (message shown locally):', err);
+      console.warn('[ChatDebug] sendChatMessage failed:', err);
+      const friendly = getFriendlyChatError(err, lang);
+      if (err instanceof ApiError) {
+        const debugBody =
+          typeof err.rawBody === 'object'
+            ? JSON.stringify(err.rawBody, null, 2)
+            : String(err.rawBody ?? err.message);
+
+        Alert.alert(
+          'DEBUG CHAT ERROR',
+          `Endpoint: ${err.method ?? ''} ${err.url ?? ''}\nStatus: ${err.status}\nError Code: ${err.errorCode ?? 'N/A'}\n\nResponse Body:\n${debugBody}`,
+          [{ text: 'OK' }],
+        );
+        setChatError(`${friendly} [${err.status ?? 'ERR'} ${err.url ?? ''}]`);
+      } else {
+        Alert.alert('DEBUG CHAT ERROR', String(err), [{ text: 'OK' }]);
+        setChatError(friendly);
+      }
     }
   };
 
+  const clearChatError = () => setChatError('');
 
   /**
    * Load real message history for a conversation with a specific doctor.
@@ -534,13 +717,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!doctorId) return;
     try {
       const msgs = await fetchChatMessagesApi(doctorId, user?.id);
-      if (msgs.length > 0) {
-        // Replace local state with the real fetched history
-        setChatMessages(msgs);
-      }
-    } catch {
-      // Backend unreachable — leave existing chatMessages intact (mocks or cached)
+      setChatMessages((prev) => mergeChatMessages(prev, msgs));
+      setChatError('');
+    } catch (err) {
       console.warn('[loadChatHistory] Could not fetch chat history, keeping local messages');
+      const friendly = getFriendlyChatError(err, lang);
+      if (err instanceof ApiError) {
+        setChatError(`${friendly} [${err.status ?? 'ERR'}]`);
+      } else {
+        setChatError(friendly);
+      }
     }
   };
 
@@ -608,8 +794,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         chatMessages,
         sendChatMessage,
         loadChatHistory,
+        startChatPolling,
+        stopChatPolling,
         activeChatDoctor,
         setActiveChatDoctor,
+        chatError,
+        clearChatError,
+        conversations,
+        unreadTotal,
+        refreshConversations,
+        archiveConversation,
+        startAppointmentConversation,
         favorites,
         toggleFavoriteDoctor,
         user,
@@ -633,4 +828,3 @@ export const useApp = () => {
   if (!context) throw new Error('useApp must be used within an AppProvider');
   return context;
 };
-

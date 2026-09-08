@@ -23,6 +23,7 @@ import { Header } from '../common/Header';
 import { DOCTOR_CATEGORIES } from '../../data/mockData';
 import { MedicalIcon } from '../common/MedicalIcon';
 import { Doctor } from '../../types';
+import { matchDoctorSearch } from '../../api/doctors';
 import { Colors } from '../../theme/colors';
 import { Shadows } from '../../theme/styles';
 
@@ -36,12 +37,7 @@ export const DoctorListScreen: React.FC = () => {
   const filteredDoctors = doctors.filter((doc) => {
     const matchesCategory = selectedCategory === 'all' || doc.category.toLowerCase() === selectedCategory.toLowerCase();
     const matchesRating = filterRating === 0 || doc.rating >= filterRating;
-    const matchesSearch =
-      searchQuery.trim() === '' ||
-      doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.nameAr.includes(searchQuery) ||
-      doc.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      doc.specialtyAr.includes(searchQuery);
+    const matchesSearch = matchDoctorSearch(doc, searchQuery);
 
     return matchesCategory && matchesRating && matchesSearch;
   });

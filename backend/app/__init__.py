@@ -19,11 +19,13 @@ def create_app(config_class=Config):
     from app.models import (  # noqa: F401 - ensures models are registered with SQLAlchemy
         User, Doctor, DoctorCategory, DoctorAvailableDay, DoctorTimeSlot,
         Appointment, MedicalRecord, Product, CartItem, ClinicLocation,
-        NotificationItem, ChatMessage, MedicalCheckupPackage,
+        NotificationItem, ChatMessage, MedicalCheckupPackage, AuditLog,
     )
 
     from app.routes import register_routes
+    from app.utils.error_handler import register_error_handlers
     register_routes(app)
+    register_error_handlers(app)
 
     @app.get("/api/health")
     def health():

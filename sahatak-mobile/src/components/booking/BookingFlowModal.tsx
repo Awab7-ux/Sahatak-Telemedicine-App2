@@ -58,39 +58,59 @@ export const BookingFlowModal: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
   const [bookedAppointment, setBookedAppointment] = useState<Appointment | null>(null);
+  const [bookingError, setBookingError] = useState<string>('');
 
   const Arrow = isRtl ? ArrowLeft : ArrowRight;
 
-  const consultationFee = doctor.fee;
-  const serviceFee = 15;
-  const totalFee = consultationFee + serviceFee;
+  const consultationFee = Number(doctor.fee) || 0;
+  const isFreeDoctor = doctor.participationType?.toLowerCase() === 'volunteer' || consultationFee === 0;
+  const serviceFee = isFreeDoctor ? 0 : 15;
+  const totalFee = Number(consultationFee) + Number(serviceFee);
 
   const handleConfirmBooking = async () => {
     setIsSubmitting(true);
+    setBookingError('');
     try {
-      const newAptData: Partial<Appointment> = {
+      const isoDate =
+        bookingDraft.appointmentDate ||
+        (bookingDraft.date && bookingDraft.timeSlot
+          ? `${bookingDraft.date}T${bookingDraft.timeSlot.split(' ')[0]}:00`
+          : new Date(Date.now() + 86400000).toISOString());
+
+      const newAptData = {
         doctorId: doctor.id,
         doctor: doctor,
-        date: bookingDraft.date || 'Thu, 23 Oct 2025',
-        timeSlot: bookingDraft.timeSlot || '10:00 AM - 11:00 AM',
+        date: bookingDraft.date || new Date().toISOString().split('T')[0],
+        timeSlot: bookingDraft.timeSlot || '09:00 - 09:30',
+        appointmentDate: isoDate,
         consultationType,
-        status: 'upcoming',
-        patientName,
+        status: 'upcoming' as const,
+        patientName: patientName.trim() || user?.name || 'Patient',
         patientAge: parseInt(patientAge, 10) || 30,
         patientGender,
-        symptoms,
-        consultationFee,
+        symptoms: symptoms.trim(),
+        consultationFee: Number(consultationFee),
         serviceFee,
-        totalFee,
-        formattedFee: `SAR ${totalFee}`,
-        formattedFeeAr: `${totalFee} ر.س`,
+        totalFee: Number(totalFee),
+        formattedFee: `${totalFee} SDG`,
+        formattedFeeAr: `${totalFee} جنيه`,
+        // Backend snake_case properties
+        doctor_id: Number(doctor.id),
+        appointment_date: isoDate,
+        appointment_type: consultationType,
+        reason_for_visit: symptoms.trim(),
       };
 
       const created = await addAppointment(newAptData);
       setBookedAppointment(created);
       setIsSuccess(true);
-    } catch (e) {
+    } catch (e: any) {
       console.log('Error creating appointment', e);
+      const msg =
+        e?.response?.data?.message ||
+        e?.message ||
+        t('Failed to book appointment. Please check availability and try again.', 'فشل حجز الموعد. يرجى التحقق من الموعد والمحاولة مرة أخرى.');
+      setBookingError(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -113,7 +133,7 @@ export const BookingFlowModal: React.FC = () => {
             )}
           </Text>
 
-          <View style={styles.bookedDetailsCard}>
+            <View style={styles.bookedDetailsCard}>
             <View style={[styles.bookedRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <Text style={styles.bookedLabel}>{t('Doctor', 'الطبيب')}:</Text>
               <Text style={styles.bookedValue}>{t(doctor.name, doctor.nameAr)}</Text>
@@ -123,9 +143,11 @@ export const BookingFlowModal: React.FC = () => {
               <Text style={styles.bookedValue}>{consultationType.toUpperCase()}</Text>
             </View>
             <View style={[styles.bookedRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-              <Text style={styles.bookedLabel}>{t('Total Paid', 'المبلغ')}:</Text>
+              <Text style={styles.bookedLabel}>{t('Payment', 'الدفع')}:</Text>
               <Text style={[styles.bookedValue, { color: Colors.primary, fontWeight: '800' }]}>
-                {t(`SAR ${totalFee}`, `${totalFee} ر.س`)}
+                {isFreeDoctor
+                  ? t('No payment required', 'لا حاجة للدفع')
+                  : t(`${totalFee} SDG`, `${totalFee} جنيه`)}
               </Text>
             </View>
           </View>
@@ -220,7 +242,7 @@ export const BookingFlowModal: React.FC = () => {
             <View style={[styles.docBannerSchedule, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <Calendar size={12} color={Colors.primary} />
               <Text style={styles.docBannerScheduleText}>
-                {bookingDraft.date || 'Thu, 23 Oct 2025'} • {bookingDraft.timeSlot || '10:00 AM'}
+                {bookingDraft.date || t('Date to be selected', 'الموعد المحدد')} • {bookingDraft.timeSlot || '09:00 - 09:30'}
               </Text>
             </View>
           </View>
@@ -382,70 +404,65 @@ export const BookingFlowModal: React.FC = () => {
         {/* Step 3: Payment Method & Fee Breakdown */}
         {step === 3 && (
           <View style={styles.stepCard}>
-            <Text style={[styles.formHeading, { textAlign: isRtl ? 'right' : 'left' }]}>
-              {t('Payment Method', 'طريقة الدفع')}
-            </Text>
-
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setPaymentMethod('card')}
-              style={[
-                styles.paymentOption,
-                paymentMethod === 'card' && styles.paymentOptionActive,
-                { flexDirection: isRtl ? 'row-reverse' : 'row' },
-              ]}
-            >
-              <CreditCard size={20} color={Colors.primary} />
-              <Text style={styles.paymentOptionText}>{t('Credit / Debit Card (Mada / Visa)', 'بطاقة مدى / فيزا')}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setPaymentMethod('apple')}
-              style={[
-                styles.paymentOption,
-                paymentMethod === 'apple' && styles.paymentOptionActive,
-                { flexDirection: isRtl ? 'row-reverse' : 'row' },
-              ]}
-            >
-              <ShieldCheck size={20} color={Colors.accent} />
-              <Text style={styles.paymentOptionText}>{t('Apple Pay / Google Pay', 'أبل باي / جوجل باي')}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setPaymentMethod('insurance')}
-              style={[
-                styles.paymentOption,
-                paymentMethod === 'insurance' && styles.paymentOptionActive,
-                { flexDirection: isRtl ? 'row-reverse' : 'row' },
-              ]}
-            >
-              <ShieldCheck size={20} color={Colors.purple} />
-              <Text style={styles.paymentOptionText}>
-                {t('Health Insurance (Bupa Gold)', 'التأمين الطبي (بوبا الفئة الذهبية)')}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Fee Breakdown */}
-            <View style={styles.feeBreakdown}>
-              <Text style={[styles.feeBreakdownTitle, { textAlign: isRtl ? 'right' : 'left' }]}>
-                {t('Payment Summary', 'ملخص الفاتورة')}
-              </Text>
-
-              <View style={[styles.feeRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-                <Text style={styles.feeSubLabel}>{t('Consultation Fee', 'أتعاب الاستشارة')}</Text>
-                <Text style={styles.feeSubVal}>SAR {consultationFee}</Text>
+            {isFreeDoctor ? (
+              <View style={styles.freeConsultationBox}>
+                <CheckCircle2 size={28} color={Colors.accent} />
+                <Text style={[styles.freeConsultationText, { textAlign: isRtl ? 'right' : 'left' }]}> 
+                  {t('This consultation is free - no payment required', 'هذه الاستشارة مجانية، لا حاجة للدفع')}
+                </Text>
               </View>
-              <View style={[styles.feeRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-                <Text style={styles.feeSubLabel}>{t('Platform Service Fee', 'رسوم المنصة والضريبة')}</Text>
-                <Text style={styles.feeSubVal}>SAR {serviceFee}</Text>
+            ) : (
+              <>
+                <Text style={[styles.formHeading, { textAlign: isRtl ? 'right' : 'left' }]}> 
+                  {t('Payment Method', 'طريقة الدفع')}
+                </Text>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setPaymentMethod('card')}
+                  style={[styles.paymentOption, paymentMethod === 'card' && styles.paymentOptionActive, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
+                >
+                  <CreditCard size={20} color={Colors.primary} />
+                  <Text style={styles.paymentOptionText}>{t('Credit / Debit Card (Mada / Visa)', 'بطاقة مدى / فيزا')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setPaymentMethod('apple')}
+                  style={[styles.paymentOption, paymentMethod === 'apple' && styles.paymentOptionActive, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
+                >
+                  <ShieldCheck size={20} color={Colors.accent} />
+                  <Text style={styles.paymentOptionText}>{t('Apple Pay / Google Pay', 'أبل باي / جوجل باي')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setPaymentMethod('insurance')}
+                  style={[styles.paymentOption, paymentMethod === 'insurance' && styles.paymentOptionActive, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
+                >
+                  <ShieldCheck size={20} color={Colors.purple} />
+                  <Text style={styles.paymentOptionText}>{t('Health Insurance (Bupa Gold)', 'التأمين الطبي (بوبا الفئة الذهبية)')}</Text>
+                </TouchableOpacity>
+                <View style={styles.feeBreakdown}>
+                  <Text style={[styles.feeBreakdownTitle, { textAlign: isRtl ? 'right' : 'left' }]}>{t('Payment Summary', 'ملخص الفاتورة')}</Text>
+                  <View style={[styles.feeRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}> 
+                    <Text style={styles.feeSubLabel}>{t('Consultation Fee', 'أتعاب الاستشارة')}</Text>
+                    <Text style={styles.feeSubVal}>{t(`${consultationFee} SDG`, `${consultationFee} جنيه`)}</Text>
+                  </View>
+                  <View style={[styles.feeRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}> 
+                    <Text style={styles.feeSubLabel}>{t('Platform Service Fee', 'رسوم المنصة والضريبة')}</Text>
+                    <Text style={styles.feeSubVal}>{t(`${serviceFee} SDG`, `${serviceFee} جنيه`)}</Text>
+                  </View>
+                  <View style={[styles.totalFeeRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}> 
+                    <Text style={styles.totalFeeLabel}>{t('Total Amount', 'المبلغ الإجمالي')}</Text>
+                    <Text style={styles.totalFeeVal}>{t(`${totalFee} SDG`, `${totalFee} جنيه`)}</Text>
+                  </View>
+                </View>
+              </>
+            )}
+
+            {bookingError ? (
+              <View style={styles.bookingErrorBox}>
+                <Text style={styles.bookingErrorText}>{bookingError}</Text>
               </View>
-              <View style={[styles.totalFeeRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-                <Text style={styles.totalFeeLabel}>{t('Total Amount', 'المبلغ الإجمالي')}</Text>
-                <Text style={styles.totalFeeVal}>{t(`SAR ${totalFee}`, `${totalFee} ر.س`)}</Text>
-              </View>
-            </View>
+            ) : null}
           </View>
         )}
       </ScrollView>
@@ -490,7 +507,9 @@ export const BookingFlowModal: React.FC = () => {
               <ActivityIndicator color={Colors.white} />
             ) : (
               <Text style={styles.confirmBtnText}>
-                {t('Pay & Confirm Booking', 'دفع وتأكيد الحجز')}
+                {isFreeDoctor
+                  ? t('Confirm Free Booking', 'تأكيد الحجز المجاني')
+                  : t('Pay & Confirm Booking', 'دفع وتأكيد الحجز')}
               </Text>
             )}
           </TouchableOpacity>
@@ -810,6 +829,16 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.slate[100],
   },
+  freeConsultationBox: {
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 28,
+  },
+  freeConsultationText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.slate[800],
+  },
   feeBreakdownTitle: {
     fontSize: 13,
     fontWeight: '700',
@@ -901,6 +930,20 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 15,
     fontWeight: '700',
+  },
+  bookingErrorBox: {
+    backgroundColor: '#fef2f2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 16,
+  },
+  bookingErrorText: {
+    color: '#b91c1c',
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 

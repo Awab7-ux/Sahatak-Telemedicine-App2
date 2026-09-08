@@ -36,11 +36,15 @@ export const DoctorChatScreen: React.FC = () => {
     chatMessages,
     sendChatMessage,
     loadChatHistory,
+    startChatPolling,
+    stopChatPolling,
     navigateTo,
     addToCart,
     products,
     isRtl,
     t,
+    chatError,
+    clearChatError,
   } = useApp();
 
   const doctor = activeChatDoctor || DOCTORS[0];
@@ -50,11 +54,16 @@ export const DoctorChatScreen: React.FC = () => {
 
   const BackIcon = isRtl ? ChevronRight : ChevronLeft;
 
-  // Load real message history from the backend when screen mounts
+  // Load real message history from the backend when screen mounts,
+  // then start HTTP polling for new messages (matches website behavior).
   useEffect(() => {
     if (doctor?.id) {
       loadChatHistory(doctor.id);
+      startChatPolling(doctor.id);
     }
+    return () => {
+      stopChatPolling();
+    };
   }, [doctor?.id]);
 
   const handleSendMessage = () => {
@@ -327,6 +336,15 @@ export const DoctorChatScreen: React.FC = () => {
         </View>
       )}
 
+      {/* Friendly error banner (e.g. permission/network failures) */}
+      {chatError ? (
+        <TouchableOpacity activeOpacity={0.8} onPress={clearChatError}>
+          <Text style={styles.chatErrorText} numberOfLines={2}>
+            {chatError}
+          </Text>
+        </TouchableOpacity>
+      ) : null}
+
       {/* Bottom Chat Input Bar */}
       <View
         style={[
@@ -372,6 +390,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  chatErrorText: {
+    backgroundColor: Colors.dangerLight,
+    color: Colors.danger,
+    fontSize: 12,
+    fontWeight: '600',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    textAlign: 'center',
   },
   headerBar: {
     backgroundColor: Colors.white,
@@ -657,4 +684,3 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 });
-

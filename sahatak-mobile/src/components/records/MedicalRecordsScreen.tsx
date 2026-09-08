@@ -22,10 +22,13 @@ import { MEDICAL_RECORDS } from '../../data/mockData';
 import { MedicalRecord } from '../../types';
 import { Colors } from '../../theme/colors';
 import { Shadows } from '../../theme/styles';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import { buildMedicalRecordHtml } from '../../utils/reportHtml';
 
 export const MedicalRecordsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const { navigateTo, addToCart, products, isRtl, t } = useApp();
+  const { navigateTo, addToCart, products, isRtl, t, user } = useApp();
   const [activeTab, setActiveTab] = useState<string>('all');
   const [viewingRecord, setViewingRecord] = useState<MedicalRecord | null>(null);
 
@@ -45,12 +48,41 @@ export const MedicalRecordsScreen: React.FC = () => {
     navigateTo('cart');
   };
 
-  const handleDownload = () => {
-    Alert.alert(
-      t('Medical Document Downloaded', 'تم حفظ المستند'),
-      t('Official certified PDF document saved to your device.', 'تم حفظ التقرير الطبي بصيغة PDF على جهازك بنجاح.')
-    );
-    setViewingRecord(null);
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async (record: MedicalRecord) => {
+    if (record.type !== 'prescription') return;
+    if (isDownloading) return;
+    setIsDownloading(true);
+    try {
+      const html = await buildMedicalRecordHtml(
+        record,
+        isRtl ? 'ar' : 'en',
+        user?.name,
+      );
+      const { uri } = await Print.printToFileAsync({ html });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: t('Save or share your medical document', 'حفظ أو مشاركة المستند الطبي'),
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert(
+          t('PDF Ready', 'تم إنشاء الملف'),
+          t(`The PDF was saved to: ${uri}`, `تم حفظ الملف في: ${uri}`),
+        );
+      }
+      setViewingRecord(null);
+    } catch (e) {
+      console.warn('PDF generation failed:', e);
+      Alert.alert(
+        t('Error', 'خطأ'),
+        t('Failed to generate the PDF document.', 'تعذر إنشاء ملف PDF.'),
+      );
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -227,16 +259,21 @@ export const MedicalRecordsScreen: React.FC = () => {
                 )}
               </ScrollView>
 
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={handleDownload}
-                style={[styles.downloadBtn, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
-              >
-                <Download size={18} color={Colors.white} />
-                <Text style={styles.downloadBtnText}>
-                  {t('Download Official PDF', 'تحميل المستند الرسمي')}
-                </Text>
-              </TouchableOpacity>
+              {viewingRecord.type === 'prescription' && (
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => handleDownload(viewingRecord)}
+                  disabled={isDownloading}
+                  style={[styles.downloadBtn, { flexDirection: isRtl ? 'row-reverse' : 'row', opacity: isDownloading ? 0.6 : 1 }]}
+                >
+                  <Download size={18} color={Colors.white} />
+                  <Text style={styles.downloadBtnText}>
+                    {isDownloading
+                      ? t('Generating PDF...', 'جارٍ إنشاء ملف PDF...')
+                      : t('Download Official PDF', 'تحميل المستند الرسمي')}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </Modal>

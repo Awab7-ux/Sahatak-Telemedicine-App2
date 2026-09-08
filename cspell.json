@@ -1,0 +1,15 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "$comment": "Project dictionary for the Sahatak app. Arabic-script strings are ignored entirely (cSpell has no built-in Arabic dictionary), which clears all 'Unknown word' warnings on Arabic UI strings.",
+  "words": [
+    "Sahatak",
+    "sahatak"
+  ],
+  "ignoreRegExpList": [
+    "[\\u0600-\\u06FF]+"
+  ],
+  "files": [
+    "sahatak-mobile/**/*.{ts,tsx,js,jsx,json,md}"
+  ]
+}

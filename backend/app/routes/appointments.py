@@ -6,6 +6,12 @@ from app.models import Appointment, Doctor
 appointments_bp = Blueprint("appointments", __name__, url_prefix="/api/appointments")
 
 
+@appointments_bp.get("/test-error")
+def test_error():
+    """Test endpoint to trigger a 500 error for webhook testing."""
+    raise Exception("Test error from appointments route - webhook should fire!")
+
+
 @appointments_bp.get("")
 @jwt_required()
 def list_appointments():

@@ -10,6 +10,11 @@ web-build/
 expo-env.d.ts
 
 # Native
+# Android native build staging dirs relocated by android/build.gradle (Windows path-length fix)
+.cxx/
+
+# macOS
+.DS_Store
 .kotlin/
 *.orig.*
 *.jks

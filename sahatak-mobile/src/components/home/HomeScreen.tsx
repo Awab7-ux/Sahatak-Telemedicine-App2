@@ -338,7 +338,7 @@ export const HomeScreen: React.FC = () => {
                   </Text>
                   <TouchableOpacity
                     activeOpacity={0.7}
-                    onPress={() => navigateTo('booking', { doctor: doc })}
+                    onPress={() => navigateTo('doctor_detail', { doctor: doc })}
                     style={styles.bookSmallBtn}
                   >
                     <Text style={styles.bookSmallText}>{t('Book', 'حجز')}</Text>

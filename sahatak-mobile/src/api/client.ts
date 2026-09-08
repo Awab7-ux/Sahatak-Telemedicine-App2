@@ -1,106 +1,167 @@
-import axios from 'axios';
+import axios, { AxiosError, AxiosResponse } from 'axios';
+import type { AxiosRequestHeaders } from 'axios';
 import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
 
-const TOKEN_KEY = 'sahatak_jwt_token';
+const RAW_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? 'https://sahatak.pythonanywhere.com/api';
 
-// ------------------------------------------------------------
-// Base URL Configuration
-// For Android emulator : http://10.0.2.2:5000/api
-// For physical device  : http://<YOUR_LAN_IP>:5000/api
-//                        (e.g. http://192.168.100.7:5000/api)
-// For iOS simulator    : http://localhost:5000/api
-// Override at runtime via EXPO_PUBLIC_API_URL env variable.
-// ------------------------------------------------------------
-const DEFAULT_BASE_URL = Platform.select({
-  android: 'http://192.168.100.7:5000/api',
-  ios: 'http://192.168.100.7:5000/api',
-  default: 'http://192.168.100.7:5000/api',
-});
+export const API_BASE_URL = RAW_BASE_URL.replace(/\/+$/, '');
+export const SOCKET_URL = API_BASE_URL.replace(/\/api$/, '');
+export const SERVER_HOST = SOCKET_URL;
 
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || DEFAULT_BASE_URL;
-export const SERVER_HOST = API_BASE_URL.replace(/\/api\/?$/, '');
+const TOKEN_KEY = 'sahatak_auth_token';
 
-// ------------------------------------------------------------
-// Real Backend Response Envelope
-// Every successful response from Sahatak-2/backend is wrapped:
-//   { success, message, timestamp, status_code, data, meta? }
-// This helper unwraps the `data` field.
-// ------------------------------------------------------------
-export function unwrapData<T>(responseData: any): T {
-  if (responseData && typeof responseData === 'object' && 'data' in responseData) {
-    return responseData.data as T;
-  }
-  // Fallback: return as-is (handles legacy / non-wrapped responses)
-  return responseData as T;
+export async function saveAuthToken(token: string): Promise<void> {
+  await SecureStore.setItemAsync(TOKEN_KEY, token);
 }
 
-export const resolveImageUrl = (url?: string): string => {
-  if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://') || url.startsWith('data:')) {
-    return url;
+export async function getAuthToken(): Promise<string | null> {
+  return SecureStore.getItemAsync(TOKEN_KEY);
+}
+
+export async function removeAuthToken(): Promise<void> {
+  await SecureStore.deleteItemAsync(TOKEN_KEY);
+}
+
+export interface ApiEnvelope<T> {
+  success: boolean;
+  message: string;
+  timestamp: string;
+  status_code: number;
+  data: T;
+  meta?: Record<string, unknown>;
+  error_code?: string;
+  field?: string;
+}
+
+export class ApiError extends Error {
+  status: number | null;
+  errorCode: string | null;
+  field: string | null;
+  rawBody?: unknown;
+  url?: string;
+  method?: string;
+
+  constructor(
+    message: string,
+    status: number | null = null,
+    errorCode: string | null = null,
+    field: string | null = null,
+    rawBody?: unknown,
+    url?: string,
+    method?: string,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.errorCode = errorCode;
+    this.field = field;
+    this.rawBody = rawBody;
+    this.url = url;
+    this.method = method;
   }
-  const cleanPath = url.startsWith('/') ? url : `/${url}`;
-  return `${SERVER_HOST}${cleanPath}`;
-};
+}
+
+export function unwrap<T>(response: AxiosResponse<ApiEnvelope<T>>): T {
+  return response.data.data;
+}
+
+// Alias used by pre-existing files (e.g. src/api/profile.ts) that expect
+// the envelope object itself, not the raw axios response.
+export function unwrapData<T>(envelope: ApiEnvelope<T>): T {
+  return envelope.data;
+}
+
+// ASSUMPTION: backend-served media (avatars etc.) is rooted at the server
+// host (SOCKET_URL), not under /api. Relative paths like "/media/x.jpg"
+// are resolved against the host; absolute URLs are passed through.
+export function resolveImageUrl(path: string): string {
+  if (!path) return path;
+  if (/^https?:\/\//i.test(path)) return path;
+  const clean = path.startsWith('/') ? path : `/${path}`;
+  return `${SOCKET_URL}${clean}`;
+}
+
+
+export function unwrapWithMeta<T>(
+  response: AxiosResponse<ApiEnvelope<T>>,
+): { data: T; meta: Record<string, unknown> | undefined } {
+  return { data: response.data.data, meta: response.data.meta };
+}
+
+type ForcedLogoutListener = (message: string) => void;
+const forcedLogoutListeners = new Set<ForcedLogoutListener>();
+
+export function onForcedLogout(listener: ForcedLogoutListener): () => void {
+  forcedLogoutListeners.add(listener);
+  return () => forcedLogoutListeners.delete(listener);
+}
+
+function emitForcedLogout(message: string): void {
+  forcedLogoutListeners.forEach((listener) => listener(message));
+}
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  timeout: 30000,
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Secure token helpers
-export const saveAuthToken = async (token: string): Promise<void> => {
-  try {
-    await SecureStore.setItemAsync(TOKEN_KEY, token);
-  } catch (e) {
-    console.warn('Failed to save auth token to SecureStore', e);
+apiClient.interceptors.request.use(async (config) => {
+  const token = await getAuthToken();
+  if (token) {
+    config.headers = (config.headers ?? {}) as AxiosRequestHeaders;
+    config.headers.Authorization = `Bearer ${token}`;
   }
-};
+  return config;
+});
 
-export const getAuthToken = async (): Promise<string | null> => {
-  try {
-    return await SecureStore.getItemAsync(TOKEN_KEY);
-  } catch (e) {
-    console.warn('Failed to get auth token from SecureStore', e);
-    return null;
-  }
-};
-
-export const removeAuthToken = async (): Promise<void> => {
-  try {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
-  } catch (e) {
-    console.warn('Failed to remove auth token from SecureStore', e);
-  }
-};
-
-// Interceptor to attach JWT token
-apiClient.interceptors.request.use(
-  async (config) => {
-    const token = await getAuthToken();
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Interceptor for response handling
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Auto-clear invalid token
-      removeAuthToken();
+  async (error: AxiosError<ApiEnvelope<unknown>>) => {
+    const status = error.response?.status ?? null;
+    const body = error.response?.data;
+    const errorCode = body?.error_code ?? null;
+    const message = body?.message ?? error.message ?? 'Network error';
+    const field = body?.field ?? null;
+
+    const looksBlocked =
+      typeof errorCode === 'string' &&
+      /BLOCKED|INACTIVE|SUSPENDED/i.test(errorCode);
+
+    // ── TEMPORARY DEBUG LOGGING (chat error diagnosis) ──────────────────
+    // Prints endpoint, method, HTTP status and the RAW response body for
+    // every failed API call so intermittent errors (e.g. the generic
+    // "Something went wrong on our side." chat fallback) can be traced to
+    // their real cause. Remove once the issue is diagnosed.
+    if (status !== null) {
+      console.warn(
+        `[ApiDebug] ${error.config?.method?.toUpperCase() ?? '?'} ${
+          error.config?.url ?? '?'
+        } -> ${status}`,
+        JSON.stringify({ body, errorCode, field }),
+      );
     }
-    return Promise.reject(error);
-  }
+
+    if (status === 403 || (status === 401 && looksBlocked)) {
+      await removeAuthToken();
+      emitForcedLogout(
+        'Your account has been suspended. Please contact support.',
+      );
+    }
+
+    return Promise.reject(
+      new ApiError(
+        message,
+        status,
+        errorCode,
+        field,
+        body,
+        error.config?.url,
+        error.config?.method?.toUpperCase(),
+      ),
+    );
+  },
 );
 
+export default apiClient;

@@ -7,9 +7,10 @@ from app.models.clinic import ClinicLocation
 from app.models.notification import NotificationItem
 from app.models.chat import ChatMessage
 from app.models.checkup import MedicalCheckupPackage
+from app.models.audit_log import AuditLog
 
 __all__ = [
     "User", "Doctor", "DoctorCategory", "DoctorAvailableDay", "DoctorTimeSlot",
     "Appointment", "MedicalRecord", "Product", "CartItem", "ClinicLocation",
-    "NotificationItem", "ChatMessage", "MedicalCheckupPackage",
+    "NotificationItem", "ChatMessage", "MedicalCheckupPackage", "AuditLog",
 ]

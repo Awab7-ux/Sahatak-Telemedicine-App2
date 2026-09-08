@@ -11,7 +11,7 @@
     "preview": {
       "distribution": "internal",
       "env": {
-      "EXPO_PUBLIC_API_URL": "http://192.168.100.7:5000/api"
+      "EXPO_PUBLIC_API_URL": "https://sahatak.pythonanywhere.com/api"
       },
       "android": {
         "buildType": "apk"

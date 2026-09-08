@@ -27,7 +27,8 @@
           "cameraPermission": "The app accesses your camera to let you capture a profile picture."
         }
       ],
-      "./withAndroidCleartextTraffic.js"
+      "./withAndroidCleartextTraffic.js",
+      "expo-asset"
     ],
     "android": {
       "package": "com.sahatak.telemedicine",

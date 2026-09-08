@@ -1,119 +1,138 @@
-import { apiClient, unwrapData } from './client';
-import { ChatMessage } from '../types';
-import { INITIAL_CHAT_MESSAGES } from '../data/mockData';
+/**
+ * chat.ts
+ * -------
+ * Doctor-focused convenience layer used by AppContext / DoctorChatScreen.
+ * Implemented on top of the exact production contract in `messages.ts`.
+ *
+ * The app identifies a chat by DOCTOR (DoctorChatScreen receives a Doctor),
+ * while the backend identifies it by CONVERSATION ID. This module caches the
+ * doctor → conversation mapping per session.
+ */
 
-// -------------------------------------------------------
-// Transform a backend Message object → mobile ChatMessage type
-// -------------------------------------------------------
-function transformBackendMessage(m: any, currentUserId?: string): ChatMessage {
-  const isPatient = m.sender_type === 'patient' ||
-    (currentUserId && String(m.sender_id) === String(currentUserId));
+import { ChatMessage } from '../types';
+import {
+  getConversationsApi,
+  getConversationApi,
+  sendMessageApi,
+  startConversationApi,
+  markMessageReadApi,
+  getUnreadCountApi,
+  RawMessage,
+  MessageContentType,
+} from './messages';
+
+interface RawChatMessage {
+  id: number | string;
+  conversation_id?: number | string;
+  sender_id?: number | string;
+  sender_type?: 'patient' | 'doctor' | 'admin';
+  content?: string;
+  message?: string;
+  message_type?: string;
+  created_at?: string;
+  is_read?: boolean;
+  [key: string]: unknown;
+}
+
+/** doctor id (profile id from /users/doctors) → conversation id */
+const conversationIdByDoctorId = new Map<string, string>();
+
+function transformBackendMessage(raw: RawMessage | RawChatMessage): ChatMessage {
+  const r = raw as Record<string, any>;
+  const senderType = r.sender_info?.user_type ?? r.sender_type;
   return {
-    id: String(m.id ?? `msg-${Date.now()}`),
-    sender: isPatient ? 'patient' : 'doctor',
-    text: m.content ?? m.message ?? m.text ?? '',
-    timestamp: m.created_at
-      ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      : m.timestamp ?? '',
-    type: m.message_type ?? m.type ?? 'text',
-    mediaUrl: m.attachment_url ?? m.media_url ?? undefined,
+    id: String(r.id),
+    sender: senderType === 'doctor' ? 'doctor' : 'patient',
+    text: r.sender_info ? r.content : (r.content ?? r.message ?? ''),
+    timestamp: r.created_at
+      ? new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : '',
+    type: (r.message_type as ChatMessage['type']) ?? 'text',
   };
 }
 
-// -------------------------------------------------------
-// Get or create a conversation with a specific doctor
-// Endpoint: GET /api/messages/conversations (filter by doctor)
-//           POST /api/messages/conversations (create if not exists)
-// -------------------------------------------------------
-export const getOrCreateConversationApi = async (
-  doctorId: string
-): Promise<{ conversationId: string }> => {
-  try {
-    // Try to find existing conversation
-    const listRes = await apiClient.get('/messages/conversations');
-    const inner = unwrapData<any>(listRes.data);
-    const conversations: any[] = Array.isArray(inner)
-      ? inner
-      : Array.isArray(inner?.conversations)
-      ? inner.conversations
-      : [];
+function transformBackendMessages(raws: (RawMessage | RawChatMessage)[]): ChatMessage[] {
+  return raws.map(transformBackendMessage);
+}
 
-    const existing = conversations.find(
-      (c: any) =>
-        String(c.doctor_id) === String(doctorId) ||
-        String(c.other_user_id) === String(doctorId)
+/**
+ * Resolve the conversation for a doctor, creating it when necessary.
+ *
+ * Strategy (matches the real backend contract):
+ *  1. Cached conversation id for this doctor → reuse.
+ *  2. Look through GET /messages/conversations for a conversation whose
+ *     participant doctor profile id matches the given doctor id.
+ *  3. POST /messages/conversations with recipient_id = the doctor's USER id
+ *     when known (the backend requires the user id for patients), falling
+ *     back to the profile id if we only have that.
+ */
+export async function getOrCreateConversationApi(
+  doctorId: number | string,
+  doctorUserId?: number | string,
+): Promise<{ conversationId: string }> {
+  const key = String(doctorId);
+  const cached = conversationIdByDoctorId.get(key);
+  if (cached) return { conversationId: cached };
+
+  // 2. Find an existing active conversation with this doctor.
+  try {
+    const { conversations } = await getConversationsApi(1, 50);
+    const match = conversations.find(
+      (c) => String(c.participant_info?.doctor?.id ?? '') === key,
     );
-    if (existing) return { conversationId: String(existing.id) };
-
-    // Create a new conversation
-    const createRes = await apiClient.post('/messages/conversations', {
-      participant_id: doctorId,
-    });
-    const created = unwrapData<any>(createRes.data);
-    return { conversationId: String(created?.id ?? created?.conversation_id ?? '') };
+    if (match) {
+      conversationIdByDoctorId.set(key, String(match.id));
+      return { conversationId: String(match.id) };
+    }
   } catch {
-    return { conversationId: '' };
+    // Listing may fail (e.g. no conversations yet) — fall through to create.
   }
-};
 
-// -------------------------------------------------------
-// Fetch chat messages for a conversation
-// -------------------------------------------------------
-export const fetchChatMessagesApi = async (
-  doctorId: string,
-  currentUserId?: string
-): Promise<ChatMessage[]> => {
-  try {
-    const { conversationId } = await getOrCreateConversationApi(doctorId);
-    if (!conversationId) return INITIAL_CHAT_MESSAGES;
+  // 3. Create one. Backend requires the doctor's user id for patients.
+  const recipientId = doctorUserId ?? doctorId;
+  const conversation = await startConversationApi({
+    recipient_id: recipientId,
+    recipient_type: 'user',
+  });
+  const conversationId = String(conversation.id);
+  conversationIdByDoctorId.set(key, conversationId);
+  return { conversationId };
+}
 
-    const response = await apiClient.get(`/messages/conversations/${conversationId}`);
-    const inner = unwrapData<any>(response.data);
-    const rawMessages: any[] = Array.isArray(inner)
-      ? inner
-      : Array.isArray(inner?.messages)
-      ? inner.messages
-      : [];
+/** Pre-seed the cache (e.g. after resolving a conversation by appointment). */
+export function cacheConversationForDoctor(
+  doctorId: number | string,
+  conversationId: number | string,
+): void {
+  conversationIdByDoctorId.set(String(doctorId), String(conversationId));
+}
 
-    return rawMessages.length > 0
-      ? rawMessages.map((m) => transformBackendMessage(m, currentUserId))
-      : INITIAL_CHAT_MESSAGES;
-  } catch {
-    return INITIAL_CHAT_MESSAGES;
-  }
-};
+export async function fetchChatMessagesApi(
+  doctorId: number | string,
+  _userId?: string,
+): Promise<ChatMessage[]> {
+  const { conversationId } = await getOrCreateConversationApi(doctorId);
+  // GET conversation detail also marks all messages read on the server side.
+  const conversation = await getConversationApi(conversationId);
+  return transformBackendMessages(conversation.messages ?? []);
+}
 
-// -------------------------------------------------------
-// Send a text message via REST (fallback if Socket.IO not connected)
-// Endpoint: POST /api/messages/conversations/:id/messages
-// -------------------------------------------------------
-export const sendChatMessageApi = async (
-  doctorId: string,
-  message: Partial<ChatMessage>,
-  currentUserId?: string
-): Promise<ChatMessage> => {
-  const fallbackMsg: ChatMessage = {
-    id: `msg-${Date.now()}`,
-    sender: 'patient',
-    text: message.text || '',
-    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    type: message.type || 'text',
-  };
+export async function sendChatMessageApi(
+  doctorId: number | string,
+  payload: { text: string; type?: string },
+  _userId?: string,
+): Promise<ChatMessage> {
+  const { conversationId } = await getOrCreateConversationApi(doctorId);
+  const message = await sendMessageApi(conversationId, {
+    content: payload.text,
+    message_type: (payload.type as MessageContentType) ?? 'text',
+  });
+  return transformBackendMessage(message);
+}
 
-  try {
-    const { conversationId } = await getOrCreateConversationApi(doctorId);
-    if (!conversationId) return fallbackMsg;
+export { markMessageReadApi };
 
-    const response = await apiClient.post(
-      `/messages/conversations/${conversationId}/messages`,
-      {
-        content: message.text || '',
-        message_type: message.type ?? 'text',
-      }
-    );
-    const inner = unwrapData<any>(response.data);
-    return inner ? transformBackendMessage(inner, currentUserId) : fallbackMsg;
-  } catch {
-    return fallbackMsg;
-  }
-};
+export async function fetchUnreadCountApi(): Promise<number> {
+  const data = await getUnreadCountApi();
+  return data.total_unread;
+}

@@ -7,6 +7,7 @@ export type ScreenType =
   | 'booking'
   | 'video_consultation'
   | 'chat_doctor'
+  | 'conversations'
   | 'pharmacy'
   | 'medicine_detail'
   | 'clinics_map'
@@ -45,7 +46,10 @@ export interface Doctor {
   about: string;
   aboutAr: string;
   isVerified: boolean;
+  participationType?: string;
   isFavorite?: boolean;
+  /** Backend `users.id` of the doctor (distinct from the doctor profile id). */
+  userId?: string;
   availableDays: {
     day: string;
     dayAr: string;
@@ -129,6 +133,7 @@ export interface Appointment {
   prescriptionId?: string;
   notes?: string;
   meetingLink?: string;
+  appointmentDate?: string;
 }
 
 export interface MedicalCheckupPackage {
@@ -259,6 +264,7 @@ export interface ChatMessage {
 
 export interface UserProfile {
   id?: string;
+  userType?: 'patient' | 'doctor' | 'admin';
   name: string;
   nameAr: string;
   phone: string;

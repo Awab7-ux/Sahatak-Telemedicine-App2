@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   Image,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -23,8 +24,53 @@ import {
 import { useApp } from '../../context/AppContext';
 import { Header } from '../common/Header';
 import { DOCTORS } from '../../data/mockData';
+import { fetchDoctorAvailabilityApi, DoctorAvailabilitySlot } from '../../api/appointments';
 import { Colors } from '../../theme/colors';
 import { Shadows } from '../../theme/styles';
+
+interface CalendarDay {
+  day: string;
+  dayAr: string;
+  dateNumber: string;
+  monthYear: string;
+  monthYearAr: string;
+  isoDate: string;
+  fullDate: string;
+  fullDateAr: string;
+}
+
+const DAY_NAMES_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_NAMES_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+const MONTHS_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+
+function generateUpcomingDays(count = 14): CalendarDay[] {
+  const days: CalendarDay[] = [];
+  const now = new Date();
+
+  for (let i = 0; i < count; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const isoDate = `${yyyy}-${mm}-${dd}`;
+    const dayOfWeek = d.getDay();
+    const monthIdx = d.getMonth();
+
+    days.push({
+      day: DAY_NAMES_EN[dayOfWeek],
+      dayAr: DAY_NAMES_AR[dayOfWeek],
+      dateNumber: String(d.getDate()),
+      monthYear: `${MONTHS_EN[monthIdx]} ${yyyy}`,
+      monthYearAr: `${MONTHS_AR[monthIdx]} ${yyyy}`,
+      isoDate,
+      fullDate: `${DAY_NAMES_EN[dayOfWeek]}, ${d.getDate()} ${MONTHS_EN[monthIdx]} ${yyyy}`,
+      fullDateAr: `${DAY_NAMES_AR[dayOfWeek]}، ${d.getDate()} ${MONTHS_AR[monthIdx]} ${yyyy}`,
+    });
+  }
+
+  return days;
+}
 
 export const DoctorDetailScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
@@ -41,19 +87,59 @@ export const DoctorDetailScreen: React.FC = () => {
   const doctor = selectedDoctor || DOCTORS[0];
   const isFav = favorites.includes(doctor.id);
 
+  const upcomingDays = useMemo(() => generateUpcomingDays(14), []);
   const [selectedDayIdx, setSelectedDayIdx] = useState<number>(0);
-  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>(
-    doctor.timeSlots.find((s) => s.available)?.time || doctor.timeSlots[0].time
-  );
+  const currentDay = upcomingDays[selectedDayIdx] || upcomingDays[0];
 
-  const currentDay = doctor.availableDays[selectedDayIdx] || doctor.availableDays[0];
+  const [availableSlots, setAvailableSlots] = useState<DoctorAvailabilitySlot[]>([]);
+  const [selectedSlotTime, setSelectedSlotTime] = useState<string>('');
+  const [isLoadingSlots, setIsLoadingSlots] = useState<boolean>(false);
+
+  useEffect(() => {
+    let isCancelled = false;
+    if (!doctor?.id || !currentDay?.isoDate) return;
+
+    setIsLoadingSlots(true);
+    fetchDoctorAvailabilityApi(doctor.id, currentDay.isoDate)
+      .then((slots) => {
+        if (isCancelled) return;
+        setAvailableSlots(slots);
+        const firstAvailable = slots.find((s) => s.available);
+        if (firstAvailable) {
+          setSelectedSlotTime(firstAvailable.start);
+        } else if (slots.length > 0) {
+          setSelectedSlotTime(slots[0].start);
+        } else {
+          setSelectedSlotTime('');
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to load doctor availability slots:', err);
+        if (!isCancelled) {
+          setAvailableSlots([]);
+          setSelectedSlotTime('');
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) setIsLoadingSlots(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [doctor?.id, currentDay?.isoDate]);
+
+  const selectedSlot = availableSlots.find((s) => s.start === selectedSlotTime);
 
   const handleStartBooking = () => {
+    if (!selectedSlot || !selectedSlot.available) return;
+
     setBookingDraft({
       doctorId: doctor.id,
       doctor: doctor,
-      date: currentDay.fullDate,
-      timeSlot: selectedTimeSlot,
+      date: isRtl ? currentDay.fullDateAr : currentDay.fullDate,
+      timeSlot: `${selectedSlot.start} - ${selectedSlot.end}`,
+      appointmentDate: selectedSlot.datetime,
       consultationType: 'video',
       consultationFee: doctor.fee,
       serviceFee: 15,
@@ -177,7 +263,9 @@ export const DoctorDetailScreen: React.FC = () => {
             <Text style={styles.sectionTitle}>
               {t('Available Schedule', 'المواعيد المتاحة')}
             </Text>
-            <Text style={styles.monthText}>October 2025</Text>
+            <Text style={styles.monthText}>
+              {t(currentDay.monthYear, currentDay.monthYearAr)}
+            </Text>
           </View>
 
           {/* Date Pills */}
@@ -186,25 +274,22 @@ export const DoctorDetailScreen: React.FC = () => {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={[styles.dateScroll, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
           >
-            {doctor.availableDays.map((dayObj, idx) => {
+            {upcomingDays.map((dayObj, idx) => {
               const isSelected = selectedDayIdx === idx;
               return (
                 <TouchableOpacity
-                  key={dayObj.date}
+                  key={dayObj.isoDate}
                   activeOpacity={0.7}
                   onPress={() => setSelectedDayIdx(idx)}
-                  disabled={!dayObj.available}
                   style={[
                     styles.datePill,
                     isSelected && styles.datePillSelected,
-                    !dayObj.available && styles.datePillDisabled,
                   ]}
                 >
                   <Text
                     style={[
                       styles.dateDayText,
                       isSelected && { color: Colors.primarySubtle },
-                      !dayObj.available && { color: Colors.slate[400] },
                     ]}
                   >
                     {t(dayObj.day, dayObj.dayAr)}
@@ -213,10 +298,9 @@ export const DoctorDetailScreen: React.FC = () => {
                     style={[
                       styles.dateNumText,
                       isSelected && { color: Colors.white },
-                      !dayObj.available && { color: Colors.slate[400] },
                     ]}
                   >
-                    {dayObj.date.split(' ')[0]}
+                    {dayObj.dateNumber}
                   </Text>
                 </TouchableOpacity>
               );
@@ -227,55 +311,74 @@ export const DoctorDetailScreen: React.FC = () => {
           <View style={styles.timeSlotsContainer}>
             <Text style={[styles.slotsHeading, { textAlign: isRtl ? 'right' : 'left' }]}>
               {t('Available Slots for', 'الأوقات المتاحة ليوم')}{' '}
-              {t(currentDay.day, currentDay.dayAr)}, {currentDay.date}
+              {t(currentDay.fullDate, currentDay.fullDateAr)}
             </Text>
 
-            {doctor.timeSlots.map((slot) => {
-              const isSelected = selectedTimeSlot === slot.time;
-              return (
-                <TouchableOpacity
-                  key={slot.time}
-                  activeOpacity={0.7}
-                  onPress={() => slot.available && setSelectedTimeSlot(slot.time)}
-                  disabled={!slot.available}
-                  style={[
-                    styles.slotBtn,
-                    isSelected && slot.available && styles.slotBtnSelected,
-                    !slot.available && styles.slotBtnDisabled,
-                    { flexDirection: isRtl ? 'row-reverse' : 'row' },
-                  ]}
-                >
-                  <View style={[styles.slotTimeRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-                    <Clock size={16} color={isSelected ? Colors.primary : Colors.slate[400]} />
-                    <Text
-                      style={[
-                        styles.slotTimeText,
-                        isSelected && { color: Colors.primaryDark, fontWeight: '700' },
-                      ]}
-                    >
-                      {slot.time}
-                    </Text>
-                  </View>
+            {isLoadingSlots ? (
+              <View style={styles.loadingSlotsBox}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+                <Text style={styles.loadingSlotsText}>
+                  {t('Checking availability...', 'جاري التحقق من المواعيد المتاحة...')}
+                </Text>
+              </View>
+            ) : availableSlots.length === 0 ? (
+              <View style={styles.emptySlotsBox}>
+                <Clock size={28} color={Colors.slate[300]} />
+                <Text style={styles.emptySlotsText}>
+                  {t('No available slots for this date.', 'لا توجد مواعيد متاحة في هذا التاريخ.')}
+                </Text>
+                <Text style={styles.emptySlotsSubText}>
+                  {t('Please select another day from the schedule above.', 'يرجى اختيار يوم آخر من الجدول أعلاه.')}
+                </Text>
+              </View>
+            ) : (
+              availableSlots.map((slot) => {
+                const isSelected = selectedSlotTime === slot.start;
+                return (
+                  <TouchableOpacity
+                    key={slot.start}
+                    activeOpacity={0.7}
+                    onPress={() => slot.available && setSelectedSlotTime(slot.start)}
+                    disabled={!slot.available}
+                    style={[
+                      styles.slotBtn,
+                      isSelected && slot.available && styles.slotBtnSelected,
+                      !slot.available && styles.slotBtnDisabled,
+                      { flexDirection: isRtl ? 'row-reverse' : 'row' },
+                    ]}
+                  >
+                    <View style={[styles.slotTimeRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                      <Clock size={16} color={isSelected ? Colors.primary : Colors.slate[400]} />
+                      <Text
+                        style={[
+                          styles.slotTimeText,
+                          isSelected && { color: Colors.primaryDark, fontWeight: '700' },
+                        ]}
+                      >
+                        {slot.start} - {slot.end}
+                      </Text>
+                    </View>
 
-                  <View style={[styles.slotStatusRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-                    <View
-                      style={[
-                        styles.statusDot,
-                        { backgroundColor: slot.available ? Colors.accent : Colors.slate[400] },
-                      ]}
-                    />
-                    <Text
-                      style={[
-                        styles.statusText,
-                        { color: slot.available ? Colors.accentDark : Colors.slate[400] },
-                      ]}
-                    >
-                      {slot.available ? t('Available', 'متاح') : t('Booked', 'محجوز')}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+                    <View style={[styles.slotStatusRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                      <View
+                        style={[
+                          styles.statusDot,
+                          { backgroundColor: slot.available ? Colors.accent : Colors.slate[400] },
+                        ]}
+                      />
+                      <Text
+                        style={[
+                          styles.statusText,
+                          { color: slot.available ? Colors.accentDark : Colors.slate[400] },
+                        ]}
+                      >
+                        {slot.available ? t('Available', 'متاح') : t('Booked', 'محجوز')}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
           </View>
         </View>
       </ScrollView>
@@ -301,7 +404,11 @@ export const DoctorDetailScreen: React.FC = () => {
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={handleStartBooking}
-          style={styles.bookActionBtn}
+          disabled={!selectedSlot || !selectedSlot.available}
+          style={[
+            styles.bookActionBtn,
+            (!selectedSlot || !selectedSlot.available) && styles.bookActionBtnDisabled,
+          ]}
         >
           <Text style={styles.bookActionBtnText}>
             {t('Book Appointment', 'احجز موعدك الآن')}
@@ -593,10 +700,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  bookActionBtnDisabled: {
+    opacity: 0.5,
+  },
   bookActionBtnText: {
     color: Colors.white,
     fontSize: 15,
     fontWeight: '700',
+  },
+  loadingSlotsBox: {
+    paddingVertical: 24,
+    alignItems: 'center',
+    gap: 8,
+  },
+  loadingSlotsText: {
+    fontSize: 13,
+    color: Colors.slate[500],
+  },
+  emptySlotsBox: {
+    paddingVertical: 24,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    backgroundColor: Colors.slate[50],
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.slate[100],
+    gap: 6,
+  },
+  emptySlotsText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.slate[600],
+    textAlign: 'center',
+  },
+  emptySlotsSubText: {
+    fontSize: 11,
+    color: Colors.slate[400],
+    textAlign: 'center',
   },
 });
 
