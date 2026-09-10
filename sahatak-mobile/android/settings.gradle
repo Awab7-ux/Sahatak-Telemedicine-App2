@@ -1,0 +1,65 @@
+pluginManagement {
+    includeBuild(new File(["node", "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().toString())
+}
+plugins { id("com.facebook.react.settings") }
+
+extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
+  if (System.getenv('EXPO_USE_COMMUNITY_AUTOLINKING') == '1') {
+    ex.autolinkLibrariesFromCommand()
+  } else {
+    def command = [
+      'node',
+      '--no-warnings',
+      '--eval',
+      'require(require.resolve(\'expo-modules-autolinking\', { paths: [require.resolve(\'expo/package.json\')] }))(process.argv.slice(1))',
+      'react-native-config',
+      '--json',
+      '--platform',
+      'android'
+    ].toList()
+    ex.autolinkLibrariesFromCommand(command)
+  }
+}
+
+rootProject.name = 'Sahatak Telemedicine'
+
+dependencyResolutionManagement {
+  versionCatalogs {
+    reactAndroidLibs {
+      from(files(new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim(), "../gradle/libs.versions.toml")))
+    }
+  }
+}
+
+apply from: new File(["node", "--print", "require.resolve('expo/package.json')"].execute(null, rootDir).text.trim(), "../scripts/autolinking.gradle");
+useExpoModules()
+
+// ---------------------------------------------------------------------------
+// Windows MAX_PATH workaround (CMake CMAKE_OBJECT_PATH_MAX = 250).
+//
+// CMake library modules installed in node_modules (currently
+// react-native-reanimated) put their AGP ".cxx" build-staging folder in
+// "<moduleDir>/.cxx" by default. Combined with this project's location and
+// reanimated's deeply nested source tree
+// (src/main/cpp/reanimated/CMakeFiles/reanimated.dir/...), object-file paths
+// exceed CMake's 250-char CMAKE_OBJECT_PATH_MAX limit and ninja fails with
+// "mkdir(...): No such file or directory".
+//
+// AGP 8.6 consumes externalNativeBuild.cmake.buildStagingDirectory when
+// choosing the ".cxx" root (CxxConfigurationModel.findCxxFolder). We set it
+// the moment the com.android.library plugin is applied (plugins.withId), so
+// it lands BEFORE the module's build.gradle and BEFORE AGP's afterEvaluate
+// computes the C++ model, relocating object files to the much shorter
+// "<android>/.cxx/react-native-reanimated".
+// ---------------------------------------------------------------------------
+gradle.beforeProject { proj ->
+    if (proj.name == 'react-native-reanimated') {
+        proj.plugins.withId('com.android.library') {
+            proj.android.externalNativeBuild.cmake.buildStagingDirectory =
+                    new File(rootDir, '.cxx/react-native-reanimated')
+        }
+    }
+}
+
+include ':app'
+includeBuild(new File(["node", "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile())
