@@ -222,14 +222,14 @@ export const SignupScreen: React.FC = () => {
       // Automatically transitions to main app when isAuthenticated becomes true
     } catch (err: any) {
       console.log('Registration error:', err);
-      if (err?.response?.status === 409) {
-        setErrorMessage(
-          t(
-            'An account with this email or phone number already exists. Please log in instead.',
-            'يوجد حساب مسجل مسبقاً بهذا البريد الإلكتروني أو رقم الهاتف. يرجى تسجيل الدخول.'
-          )
-        );
-      } else if (err?.code === 'ECONNABORTED' || err?.message?.includes('Network Error') || !err?.response) {
+      // Only show a network error when NO HTTP response was received at all
+      // (ApiError carries `status: null` in that case). Any real HTTP error
+      // status (e.g. 409 Conflict) is a server response, not a network problem.
+      if (
+        err?.status === null ||
+        err?.code === 'ECONNABORTED' ||
+        err?.message?.toLowerCase().includes('network')
+      ) {
         setErrorMessage(
           t(
             'Network error: Unable to connect to Sahatak server. Please check your internet connection and backend status.',
@@ -237,7 +237,9 @@ export const SignupScreen: React.FC = () => {
           )
         );
       } else {
-        const serverMsg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Registration failed';
+        // ApiError.message already carries the backend's user-facing message
+        // (e.g. "Email already registered" for a 409 Conflict response).
+        const serverMsg = err?.message || t('Registration failed', 'فشل إنشاء الحساب');
         setErrorMessage(serverMsg);
       }
     } finally {
