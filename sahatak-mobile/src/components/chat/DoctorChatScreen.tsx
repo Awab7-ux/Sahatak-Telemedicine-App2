@@ -7,6 +7,7 @@ import {
   ScrollView,
   Image,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -28,6 +29,7 @@ import { useApp } from '../../context/AppContext';
 import { DOCTORS } from '../../data/mockData';
 import { Colors } from '../../theme/colors';
 import { Shadows } from '../../theme/styles';
+import { Appointment } from '../../types';
 
 export const DoctorChatScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
@@ -45,6 +47,9 @@ export const DoctorChatScreen: React.FC = () => {
     t,
     chatError,
     clearChatError,
+    appointments,
+    conversations,
+    setActiveAppointment,
   } = useApp();
 
   const doctor = activeChatDoctor || DOCTORS[0];
@@ -53,6 +58,67 @@ export const DoctorChatScreen: React.FC = () => {
   const scrollViewRef = useRef<ScrollView>(null);
 
   const BackIcon = isRtl ? ChevronRight : ChevronLeft;
+
+  /**
+   * Video / audio call buttons. The video screen reads `activeAppointment`
+   * from context — if we don't set it here, it falls back to the mock
+   * INITIAL_APPOINTMENTS[0] (id 'APT-78291'), which the video screen treats as
+   * a demo appointment ("This is a demo appointment...") even when the patient
+   * has a REAL appointment with this doctor. Resolve the real appointment
+   * before joining:
+   *   1. the patient's appointment list (matches by backend doctor profile id);
+   *   2. the appointment linked to this conversation (Conversation.appointment_id).
+   * If neither exists, tell the user honestly instead of showing the demo mask.
+   */
+  const handleStartCallPress = () => {
+    const profileId = String(doctor.id);
+
+    const linkedApt = appointments.find(
+      (a) => String(a.doctorId) === profileId || String(a.doctor?.id) === profileId,
+    );
+    if (linkedApt) {
+      setActiveAppointment(linkedApt);
+      navigateTo('video_consultation');
+      return;
+    }
+
+    const linkedConv = conversations.find(
+      (c) => String(c.participant_info?.doctor?.id ?? '') === profileId,
+    );
+    const convAptId = linkedConv?.appointment_id;
+    if (convAptId != null) {
+      const convApt: Appointment = {
+        id: String(convAptId),
+        doctorId: doctor.id,
+        doctor,
+        date: '',
+        timeSlot: '',
+        consultationType: 'video',
+        status: 'upcoming',
+        patientName: '',
+        patientAge: 0,
+        patientGender: '',
+        symptoms: '',
+        consultationFee: 0,
+        serviceFee: 0,
+        totalFee: 0,
+        formattedFee: '',
+        formattedFeeAr: '',
+        bookedAt: new Date().toISOString(),
+      };
+      setActiveAppointment(convApt);
+      navigateTo('video_consultation');
+      return;
+    }
+
+    Alert.alert(
+      t('No linked appointment', 'لا يوجد موعد مرتبط'),
+      t(
+        `There is no video appointment with ${doctor.name} to join yet. Book an appointment first, then join from My Appointments.`,
+        `لا يوجد موعد فيديو مع ${doctor.nameAr} للانضمام إليه بعد. احجز موعدك أولاً ثم انضم من صفحة مواعيدي.`,
+      ),
+    );
+  };
 
   // Load real message history from the backend when screen mounts,
   // then start HTTP polling for new messages (matches website behavior).
@@ -121,14 +187,14 @@ export const DoctorChatScreen: React.FC = () => {
         <View style={[styles.headerCallActions, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => navigateTo('video_consultation')}
+            onPress={handleStartCallPress}
             style={[styles.callActionBtn, { backgroundColor: Colors.primarySubtle }]}
           >
             <Video size={18} color={Colors.primary} />
           </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => navigateTo('video_consultation')}
+            onPress={handleStartCallPress}
             style={[styles.callActionBtn, { backgroundColor: Colors.slate[100] }]}
           >
             <PhoneCall size={16} color={Colors.slate[700]} />
