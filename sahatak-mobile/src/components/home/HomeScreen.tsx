@@ -44,6 +44,7 @@ export const HomeScreen: React.FC = () => {
     products,
     appointments,
     navigateTo,
+    setActiveAppointment,
     addToCart,
     isRtl,
     t,
@@ -54,6 +55,15 @@ export const HomeScreen: React.FC = () => {
   const Arrow = isRtl ? ArrowLeft : ArrowRight;
   const upcomingApt = appointments.find((a) => a.status === 'upcoming') || appointments[0];
   const avatarUrl = user?.avatar ? resolveImageUrl(user.avatar) : DEFAULT_AVATAR;
+
+  // VideoConsultationScreen reads the appointment from context
+  // (activeAppointment), not from route params — set it here first so a real
+  // appointment never falls back to the placeholder/demo one.
+  const handleJoinVideoCall = () => {
+    if (!upcomingApt) return;
+    setActiveAppointment(upcomingApt);
+    navigateTo('video_consultation', { appointment: upcomingApt });
+  };
 
   return (
     <ScrollView
@@ -240,7 +250,7 @@ export const HomeScreen: React.FC = () => {
 
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => navigateTo('video_consultation', { appointment: upcomingApt })}
+              onPress={handleJoinVideoCall}
               style={[styles.joinCallBtn, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
             >
               <Video size={18} color={Colors.white} />
