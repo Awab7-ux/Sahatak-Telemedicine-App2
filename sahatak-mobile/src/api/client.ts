@@ -144,6 +144,15 @@ apiClient.interceptors.response.use(
     }
 
     if (status === 403 || (status === 401 && looksBlocked)) {
+      // Warn explicitly so the endpoint and body are immediately visible in
+      // the log if this fires unexpectedly during a test session.  The generic
+      // [ApiDebug] line above fires for every error; this one fires ONLY when
+      // we are about to force-logout the user.
+      console.warn(
+        `[ForcedLogout] Triggering logout after HTTP ${status} from ` +
+          `${error.config?.method?.toUpperCase() ?? '?'} ${error.config?.url ?? '?'}`,
+        JSON.stringify({ status, body, errorCode }),
+      );
       await removeAuthToken();
       emitForcedLogout(
         'Your account has been suspended. Please contact support.',

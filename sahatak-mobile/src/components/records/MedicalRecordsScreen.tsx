@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Modal,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -20,6 +21,12 @@ import { useApp } from '../../context/AppContext';
 import { Header } from '../common/Header';
 import { MEDICAL_RECORDS } from '../../data/mockData';
 import { MedicalRecord } from '../../types';
+import {
+  fetchPatientDiagnosesApi,
+  fetchPatientVitalSignsApi,
+  DiagnosisApiRecord,
+  VitalSignApiRecord,
+} from '../../api/records';
 import { Colors } from '../../theme/colors';
 import { Shadows } from '../../theme/styles';
 import * as Print from 'expo-print';
@@ -37,11 +44,119 @@ export const MedicalRecordsScreen: React.FC = () => {
     { id: 'prescription', labelEn: 'Prescriptions', labelAr: 'الوصفات الطبية' },
     { id: 'lab_report', labelEn: 'Lab Reports', labelAr: 'التحاليل المخبرية' },
     { id: 'consultation_summary', labelEn: 'Doctor Reports', labelAr: 'تقارير الاستشارات' },
+    { id: 'vitals', labelEn: 'Vital Signs', labelAr: 'العلامات الحيوية' },
   ];
 
-  const filteredRecords = MEDICAL_RECORDS.filter(
-    (rec) => activeTab === 'all' || rec.type === activeTab
+  // ── Real backend data (doctor-created diagnoses + vital signs) ──────────
+  const [apiDiagnoses, setApiDiagnoses] = useState<DiagnosisApiRecord[]>([]);
+  const [apiVitals, setApiVitals] = useState<VitalSignApiRecord[]>([]);
+  const [loadingRecords, setLoadingRecords] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      if (!user?.id) {
+        setLoadingRecords(false);
+        return;
+      }
+      setLoadingRecords(true);
+      setFetchError(null);
+      try {
+        const [diagnoses, vitals] = await Promise.all([
+          fetchPatientDiagnosesApi(user.id),
+          fetchPatientVitalSignsApi(user.id),
+        ]);
+        if (!cancelled) {
+          setApiDiagnoses(diagnoses);
+          setApiVitals(vitals);
+        }
+      } catch (e: any) {
+        // Surface the error so it is observable during testing; include the
+        // HTTP status code (present on ApiError) so we know exactly which
+        // endpoint failed and why (e.g. 403 = access denied, 401 = token).
+        const status: number | null = e?.status ?? null;
+        const msg: string = e?.message ?? String(e);
+        console.error(
+          `[MedicalRecords] Failed to load records (HTTP ${status ?? 'N/A'}):`,
+          msg,
+          e,
+        );
+        if (!cancelled) {
+          setFetchError(
+            status !== null
+              ? `Could not load your medical records (server error ${status}). Please try again.`
+              : `Could not load your medical records. Please check your connection and try again.`,
+          );
+        }
+      } finally {
+        if (!cancelled) setLoadingRecords(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  // Map backend Diagnosis records (doctor's medical reports) into the
+  // screen's MedicalRecord shape. Fields come from Diagnosis.to_dict()
+  // (Sahatak-2/backend/models.py): primary_diagnosis, clinical_findings,
+  // treatment_plan, diagnosis_date, doctor_name...
+  const realRecords: MedicalRecord[] = useMemo(
+    () =>
+      apiDiagnoses.map((d) => ({
+        id: `DX-${d.id}`,
+        title: 'Medical Report',
+        titleAr: 'تقرير طبي',
+        doctorName: d.doctor_name ?? 'Doctor',
+        doctorNameAr: d.doctor_name ?? 'الطبيب',
+        doctorSpecialty: '',
+        doctorSpecialtyAr: '',
+        doctorAvatar: '',
+        date: (d.diagnosis_date || '').slice(0, 10),
+        dateAr: (d.diagnosis_date || '').slice(0, 10),
+        type: 'consultation_summary',
+        status: d.resolved ? 'Completed' : 'Active',
+        statusAr: d.resolved ? 'مكتمل' : 'نشط',
+        diagnosisSummary: d.primary_diagnosis,
+        diagnosisSummaryAr: d.primary_diagnosis,
+        diagnosis: [
+          d.clinical_findings ? `Clinical findings: ${d.clinical_findings}` : '',
+          d.treatment_plan ? `Treatment plan: ${d.treatment_plan}` : '',
+          d.follow_up_required && d.follow_up_date
+            ? `Follow-up required on ${d.follow_up_date.slice(0, 10)}`
+            : '',
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        diagnosisAr: undefined,
+        fileSize: '',
+      })),
+    [apiDiagnoses],
   );
+
+  // Real data wins; bundled demo records are only used as a fallback when
+  // the API returned nothing (or failed) so the screen is never blank.
+  const records = realRecords.length > 0 ? realRecords : MEDICAL_RECORDS;
+
+  const filteredRecords = records.filter(
+    (rec) => activeTab === 'all' || rec.type === activeTab,
+  );
+
+  const formatVitalDate = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleString(isRtl ? 'ar' : 'en', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return iso;
+    }
+  };
 
   const handleOrderPrescription = (_rec: MedicalRecord) => {
     addToCart(products[0], 1);
@@ -126,12 +241,114 @@ export const MedicalRecordsScreen: React.FC = () => {
         </ScrollView>
       </View>
 
-      {/* Records Cards List */}
+      {/* Fetch Error Banner — visible so failures are observable during testing */}
+      {fetchError && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{fetchError}</Text>
+        </View>
+      )}
+
+      {/* Records Cards List / Vitals Tab */}
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingBottom: 60 }]}
         showsVerticalScrollIndicator={false}
       >
-        {filteredRecords.map((record) => (
+        {activeTab === 'vitals' ? (
+          /* ── Vital Signs Tab ──────────────────────────────────────── */
+          apiVitals.length === 0 ? (
+            <View style={styles.emptyVitals}>
+              <Text style={styles.emptyVitalsText}>
+                {t('No vital signs recorded yet.', 'لا توجد علامات حيوية مسجلة بعد.')}
+              </Text>
+            </View>
+          ) : (
+            apiVitals.map((v) => {
+              // Cast individual fields because VitalSignApiRecord has a
+              // [key: string]: unknown index signature which widens all
+              // known fields to 'unknown'. Casts are safe — they match
+              // the declared types in the interface.
+              const measuredAt = v.measured_at as string;
+              const recordedBy = v.recorded_by as string | null | undefined;
+              const heartRate = v.heart_rate as number | null | undefined;
+              const systolicBp = v.systolic_bp as number | null | undefined;
+              const diastolicBp = v.diastolic_bp as number | null | undefined;
+              const temperature = v.temperature as number | null | undefined;
+              const respiratoryRate = v.respiratory_rate as number | null | undefined;
+              const oxygenSaturation = v.oxygen_saturation as number | null | undefined;
+              const weight = v.weight as number | null | undefined;
+              const height = v.height as number | null | undefined;
+              const bmi = v.bmi as number | null | undefined;
+              const notes = v.notes as string | null | undefined;
+              return (
+              <View key={v.id} style={styles.vitalCard}>
+                <View style={[styles.vitalCardHeader, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                  <Text style={styles.vitalDate}>{formatVitalDate(measuredAt)}</Text>
+                  {recordedBy ? (
+                    <Text style={styles.vitalRecordedBy}>
+                      {t('By', 'بواسطة')} {recordedBy}
+                    </Text>
+                  ) : null}
+                </View>
+                <View style={styles.vitalGrid}>
+                  {heartRate != null && (
+                    <View style={styles.vitalItem}>
+                      <Text style={styles.vitalLabel}>{t('Heart Rate', 'معدل ضربات القلب')}</Text>
+                      <Text style={styles.vitalValue}>{heartRate} <Text style={styles.vitalUnit}>bpm</Text></Text>
+                    </View>
+                  )}
+                  {systolicBp != null && diastolicBp != null && (
+                    <View style={styles.vitalItem}>
+                      <Text style={styles.vitalLabel}>{t('Blood Pressure', 'ضغط الدم')}</Text>
+                      <Text style={styles.vitalValue}>{systolicBp}/{diastolicBp} <Text style={styles.vitalUnit}>mmHg</Text></Text>
+                    </View>
+                  )}
+                  {temperature != null && (
+                    <View style={styles.vitalItem}>
+                      <Text style={styles.vitalLabel}>{t('Temperature', 'درجة الحرارة')}</Text>
+                      <Text style={styles.vitalValue}>{temperature} <Text style={styles.vitalUnit}>°C</Text></Text>
+                    </View>
+                  )}
+                  {respiratoryRate != null && (
+                    <View style={styles.vitalItem}>
+                      <Text style={styles.vitalLabel}>{t('Resp. Rate', 'معدل التنفس')}</Text>
+                      <Text style={styles.vitalValue}>{respiratoryRate} <Text style={styles.vitalUnit}>rpm</Text></Text>
+                    </View>
+                  )}
+                  {oxygenSaturation != null && (
+                    <View style={styles.vitalItem}>
+                      <Text style={styles.vitalLabel}>{t('O₂ Saturation', 'تشبع الأكسجين')}</Text>
+                      <Text style={styles.vitalValue}>{oxygenSaturation} <Text style={styles.vitalUnit}>%</Text></Text>
+                    </View>
+                  )}
+                  {weight != null && (
+                    <View style={styles.vitalItem}>
+                      <Text style={styles.vitalLabel}>{t('Weight', 'الوزن')}</Text>
+                      <Text style={styles.vitalValue}>{weight} <Text style={styles.vitalUnit}>kg</Text></Text>
+                    </View>
+                  )}
+                  {height != null && (
+                    <View style={styles.vitalItem}>
+                      <Text style={styles.vitalLabel}>{t('Height', 'الطول')}</Text>
+                      <Text style={styles.vitalValue}>{height} <Text style={styles.vitalUnit}>cm</Text></Text>
+                    </View>
+                  )}
+                  {bmi != null && (
+                    <View style={styles.vitalItem}>
+                      <Text style={styles.vitalLabel}>{t('BMI', 'مؤشر كتلة الجسم')}</Text>
+                      <Text style={styles.vitalValue}>{Number(bmi).toFixed(1)}</Text>
+                    </View>
+                  )}
+                </View>
+                {notes ? (
+                  <Text style={styles.vitalNotes}>{notes}</Text>
+                ) : null}
+              </View>
+              );
+            })
+          )
+        ) : (
+          /* ── All other tabs (documents) ────────────────────────── */
+          filteredRecords.map((record) => (
           <View key={record.id} style={styles.recordCard}>
             <View style={[styles.recordHeaderRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
               <View style={styles.docIconWrap}>
@@ -143,6 +360,8 @@ export const MedicalRecordsScreen: React.FC = () => {
                   <Text style={styles.typeBadgeText}>
                     {record.type === 'prescription'
                       ? t('E-Prescription', 'وصفة طبية معتمدة')
+                      : record.type === 'consultation_summary'
+                      ? t('Doctor Report', 'تقرير الطبيب')
                       : t('Lab Test Result', 'تقرير فحص مخبري')}
                   </Text>
                 </View>
@@ -211,7 +430,8 @@ export const MedicalRecordsScreen: React.FC = () => {
               </View>
             </View>
           </View>
-        ))}
+        ))
+        )}
       </ScrollView>
 
       {/* PDF / Digital Document Viewer Modal */}
@@ -544,6 +764,92 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 14,
     fontWeight: '700',
+  },
+  // ── Error banner ──────────────────────────────────────────────────────────
+  errorBanner: {
+    marginHorizontal: 16,
+    marginTop: 10,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 12,
+    padding: 12,
+  },
+  errorBannerText: {
+    fontSize: 13,
+    color: '#DC2626',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  // ── Vital signs tab ───────────────────────────────────────────────────────
+  vitalCard: {
+    backgroundColor: Colors.white,
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.slate[100],
+    ...Shadows.sm,
+    gap: 10,
+  },
+  vitalCardHeader: {
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  vitalDate: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.slate[700],
+  },
+  vitalRecordedBy: {
+    fontSize: 11,
+    color: Colors.slate[400],
+  },
+  vitalGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  vitalItem: {
+    backgroundColor: Colors.primaryBg,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    minWidth: '44%',
+    flex: 1,
+    gap: 2,
+  },
+  vitalLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: Colors.slate[500],
+    textTransform: 'uppercase',
+  },
+  vitalValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  vitalUnit: {
+    fontSize: 11,
+    fontWeight: '400',
+    color: Colors.slate[400],
+  },
+  vitalNotes: {
+    fontSize: 12,
+    color: Colors.slate[500],
+    fontStyle: 'italic',
+    borderTopWidth: 1,
+    borderTopColor: Colors.slate[100],
+    paddingTop: 8,
+  },
+  emptyVitals: {
+    alignItems: 'center',
+    paddingVertical: 48,
+  },
+  emptyVitalsText: {
+    fontSize: 13,
+    color: Colors.slate[400],
+    textAlign: 'center',
   },
 });
 
