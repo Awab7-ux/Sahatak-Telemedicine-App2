@@ -30,6 +30,9 @@ import {
 import { useApp } from '../../context/AppContext';
 import { DOCTOR_CATEGORIES, HEALTH_CHECKUP_PACKAGES } from '../../data/mockData';
 import { MedicalIcon } from '../common/MedicalIcon';
+import { JourneyTracker } from '../experience/JourneyTracker';
+import { deriveJourneyFromAppointment } from '../../experience/journey';
+import { SkeletonCard } from '../ui/Skeleton';
 import { resolveImageUrl } from '../../api/client';
 import { Colors } from '../../theme/colors';
 import { Shadows } from '../../theme/styles';
@@ -50,11 +53,18 @@ export const HomeScreen: React.FC = () => {
     t,
     unreadNotificationsCount,
     setSearchQuery,
+    calmUi,
   } = useApp();
 
   const Arrow = isRtl ? ArrowLeft : ArrowRight;
   const upcomingApt = appointments.find((a) => a.status === 'upcoming') || appointments[0];
   const avatarUrl = user?.avatar ? resolveImageUrl(user.avatar) : DEFAULT_AVATAR;
+
+  // ── Journey (advisory/derived only — backend RBAC remains the real gate) ──
+  // Focus appointment: the active upcoming one, else the most recent completed.
+  const completedApt = appointments.find((a) => a.status === 'completed');
+  const focusApt = upcomingApt?.status === 'upcoming' ? upcomingApt : completedApt ?? null;
+  const journey = deriveJourneyFromAppointment(focusApt);
 
   // VideoConsultationScreen reads the appointment from context
   // (activeAppointment), not from route params — set it here first so a real
@@ -106,7 +116,8 @@ export const HomeScreen: React.FC = () => {
             style={styles.bellButton}
           >
             <Bell size={20} color={Colors.slate[700]} />
-            {unreadNotificationsCount > 0 && <View style={styles.bellBadge} />}
+            {/* Non-essential unread badge — suppressed by Calm Mode "reduce notifications". */}
+            {!calmUi.reduce_notifications && unreadNotificationsCount > 0 && <View style={styles.bellBadge} />}
           </TouchableOpacity>
         </View>
 
@@ -146,6 +157,83 @@ export const HomeScreen: React.FC = () => {
             ]}
           />
         </TouchableOpacity>
+      </View>
+
+      {/* Journey Tracker + stage-driven primary actions */}
+      <View style={styles.sectionPadding}>
+        <JourneyTracker journey={journey} />
+        {!journey.cancelled && journey.stages.some((s) => s.state === 'current') && (
+          <View
+            style={[styles.journeyActions, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
+          >
+            {(() => {
+              const current = journey.stages.find((s) => s.state === 'current')?.id;
+              if (current === 'DISCOVER') {
+                return (
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => navigateTo('doctors')}
+                    style={styles.journeyActionBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('Find a Doctor', 'ابحث عن طبيب')}
+                  >
+                    <Text style={styles.journeyActionText}>
+                      {t('Find a Doctor', 'ابحث عن طبيب')}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }
+              if (current === 'PREPARE' || current === 'WAIT') {
+                return (
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    onPress={() => navigateTo('my_appointments')}
+                    style={styles.journeyActionBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('Prepare for Consultation', 'استعد للاستشارة')}
+                  >
+                    <Text style={styles.journeyActionText}>
+                      {t('Prepare for Consultation', 'استعد للاستشارة')}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }
+              if (current === 'UNDERSTAND' || current === 'FOLLOW_UP') {
+                return (
+                  <>
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      onPress={() =>
+                        navigateTo('care_summary', focusApt ? { appointmentId: focusApt.id } : {})
+                      }
+                      style={styles.journeyActionBtn}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('View Care Summary', 'عرض ملخص الرعاية')}
+                    >
+                      <Text style={styles.journeyActionText}>
+                        {t('View Care Summary', 'عرض ملخص الرعاية')}
+                      </Text>
+                    </TouchableOpacity>
+                    {focusApt && (
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        onPress={() => navigateTo('doctor_detail', { doctor: focusApt.doctor })}
+                        style={styles.journeyActionSecondary}
+                        accessibilityRole="button"
+                        accessibilityLabel={t('Book Follow-Up', 'احجز موعد متابعة')}
+                      >
+                        <Text style={styles.journeyActionSecondaryText}>
+                          {t('Book Follow-Up', 'احجز موعد متابعة')}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </>
+                );
+              }
+              return null;
+            })()}
+          </View>
+        )}
       </View>
 
       {/* Services Grid (5 services) */}
@@ -322,7 +410,11 @@ export const HomeScreen: React.FC = () => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={[styles.doctorScroll, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
         >
-          {doctors.slice(0, 4).map((doc) => (
+          {doctors.length === 0
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <SkeletonCard key={`doc-skel-${i}`} height={186} style={styles.docCardSkel} />
+              ))
+            : doctors.slice(0, 4).map((doc) => (
             <TouchableOpacity
               key={doc.id}
               activeOpacity={0.8}
@@ -360,7 +452,8 @@ export const HomeScreen: React.FC = () => {
         </ScrollView>
       </View>
 
-      {/* Popular Pharmacy Products */}
+      {/* Popular Pharmacy Products — hidden by Calm Mode "simplified layout" (never hides medical info) */}
+      {!calmUi.simplified_layout && (
       <View style={styles.sectionPadding}>
         <View style={[styles.sectionHeaderRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <Text style={styles.sectionTitle}>
@@ -413,6 +506,7 @@ export const HomeScreen: React.FC = () => {
           ))}
         </ScrollView>
       </View>
+      )}
     </ScrollView>
   );
 };
@@ -759,6 +853,40 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  docCardSkel: {
+    width: 170,
+    borderRadius: 18,
+  },
+  journeyActions: {
+    gap: 10,
+    marginTop: 10,
+  },
+  journeyActionBtn: {
+    flex: 1,
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  journeyActionText: {
+    color: Colors.white,
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  journeyActionSecondary: {
+    flex: 1,
+    backgroundColor: Colors.primarySubtle,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  journeyActionSecondaryText: {
+    color: Colors.primaryDark,
+    fontSize: 13,
+    fontWeight: '800',
   },
 });
 

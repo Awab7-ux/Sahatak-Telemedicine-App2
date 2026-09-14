@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import {
@@ -37,6 +38,7 @@ import { resolveImageUrl } from '../../api/client';
 import { uploadAvatarApi } from '../../api/profile';
 import { Colors } from '../../theme/colors';
 import { Shadows } from '../../theme/styles';
+import type { CalmUiPrefs } from '../../api/userSettings';
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80';
 
@@ -52,6 +54,8 @@ export const ProfileScreen: React.FC = () => {
     logout,
     isRtl,
     t,
+    calmUi,
+    setCalmUi,
   } = useApp();
 
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -408,6 +412,92 @@ export const ProfileScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Calm Mode */}
+        <View style={styles.menuGroup}>
+          <Text style={[styles.groupHeading, { textAlign: isRtl ? 'right' : 'left' }]}>
+            {t('Calm Mode', 'الوضع الهادئ')}
+          </Text>
+
+          <View style={styles.menuList}>
+            {/* Master switch */}
+            <View style={[styles.menuItem, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+              <View style={[styles.menuItemLeft, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                <View style={[styles.menuIconWrap, { backgroundColor: Colors.primarySubtle }]}>
+                  <Bell size={18} color={Colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.menuItemTitle}>
+                    {t('Calm Mode', 'الوضع الهادئ')}
+                  </Text>
+                  <Text style={styles.calmHint}>
+                    {t('A quieter, simpler app experience.', 'تجربة تطبيق أهدأ وأبسط.')}
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={calmUi.calm_mode}
+                onValueChange={(v: boolean) => setCalmUi({ calm_mode: v })}
+                trackColor={{ false: Colors.slate[200], true: Colors.primary }}
+                thumbColor={Colors.white}
+              />
+            </View>
+
+            {(
+              [
+                {
+                  key: 'reduce_animations',
+                  labelEn: 'Reduce animations',
+                  labelAr: 'تقليل الحركات',
+                },
+                {
+                  key: 'reduce_clutter',
+                  labelEn: 'Reduce clutter',
+                  labelAr: 'تقليل التكدس',
+                },
+                {
+                  key: 'reduce_notifications',
+                  labelEn: 'Reduce non-essential notifications',
+                  labelAr: 'تقليل الإشعارات غير الضرورية',
+                },
+                {
+                  key: 'simplified_layout',
+                  labelEn: 'Simplified layout',
+                  labelAr: 'تصميم مبسّط',
+                },
+              ] as { key: keyof CalmUiPrefs; labelEn: string; labelAr: string }[]
+            ).map((sub) => (
+              <View
+                key={sub.key}
+                style={[
+                  styles.menuItem,
+                  { flexDirection: isRtl ? 'row-reverse' : 'row', opacity: calmUi.calm_mode ? 1 : 0.5 },
+                ]}
+              >
+                <View style={[styles.menuItemLeft, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
+                  <View style={styles.calmBullet} />
+                  <Text style={styles.menuItemTitle}>
+                    {t(sub.labelEn, sub.labelAr)}
+                  </Text>
+                </View>
+                <Switch
+                  value={calmUi[sub.key]}
+                  disabled={!calmUi.calm_mode}
+                  onValueChange={(v: boolean) => setCalmUi({ [sub.key]: v })}
+                  trackColor={{ false: Colors.slate[200], true: Colors.primary }}
+                  thumbColor={Colors.white}
+                />
+              </View>
+            ))}
+          </View>
+
+          <Text style={styles.calmNote}>
+            {t(
+              'Calm Mode never hides medical information, appointment status, or urgent notifications.',
+              'لا يخفي الوضع الهادئ أبداً المعلومات الطبية أو حالة المواعيد أو الإشعارات العاجلة.'
+            )}
+          </Text>
+        </View>
       </ScrollView>
     </View>
   );
@@ -638,6 +728,24 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: Colors.primary,
+  },
+  calmHint: {
+    fontSize: 10,
+    color: Colors.slate[400],
+    marginTop: 2,
+  },
+  calmBullet: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.slate[300],
+  },
+  calmNote: {
+    fontSize: 10,
+    color: Colors.slate[400],
+    paddingHorizontal: 4,
+    marginTop: 2,
+    lineHeight: 14,
   },
 });
 

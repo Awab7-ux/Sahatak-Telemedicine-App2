@@ -42,7 +42,7 @@ export const Header: React.FC<HeaderProps> = ({
   whiteText = false,
 }) => {
   const insets = useSafeAreaInsets();
-  const { goBack, isRtl, lang, setLang, t, unreadNotificationsCount, navigateTo } = useApp();
+  const { goBack, isRtl, lang, setLang, t, unreadNotificationsCount, navigateTo, calmUi } = useApp();
 
   const handleBack = () => {
     if (onBack) onBack();
@@ -156,7 +156,9 @@ export const Header: React.FC<HeaderProps> = ({
             ]}
           >
             <Bell size={18} color={whiteText ? Colors.white : Colors.slate[700]} />
-            {unreadNotificationsCount > 0 && <View style={styles.notifBadge} />}
+            {/* Non-essential unread badge — suppressed by Calm Mode "reduce notifications".
+                Notifications themselves remain fully accessible; nothing medical is hidden. */}
+            {!calmUi.reduce_notifications && unreadNotificationsCount > 0 && <View style={styles.notifBadge} />}
           </TouchableOpacity>
         )}
 

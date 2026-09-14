@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Image,
   StyleSheet,
   Platform,
+  Alert,
 } from 'react-native';
 import {
   Calendar,
@@ -15,12 +16,27 @@ import {
   MessageSquare,
   FileText,
   RotateCcw,
+  CalendarPlus,
+  CalendarX2,
 } from 'lucide-react-native';
 import { useApp } from '../../context/AppContext';
 import { Header } from '../common/Header';
 import { AppointmentStatus, Appointment } from '../../types';
 import { Colors } from '../../theme/colors';
 import { Shadows } from '../../theme/styles';
+import { fetchDoctorAvailabilityApi } from '../../api/appointments';
+import { SkeletonList } from '../ui/Skeleton';
+
+/**
+ * One-Tap Follow-Up eligibility (advisory/derived — the booking POST and the
+ * backend's own authorization remain the real gates):
+ *  - completed + same doctor has open slots → labeled follow-up CTA
+ *  - completed + no slots → "no available slots" alert with
+ *    view-other-times / find-another-doctor options
+ *  - cancelled → no follow-up UI at all
+ *  - upcoming (not yet completed) → generic rebook wording only
+ */
+type FollowUpEligibility = 'checking' | 'available' | 'no_slots';
 
 export const MyAppointmentsScreen: React.FC = () => {
   const {
@@ -29,13 +45,42 @@ export const MyAppointmentsScreen: React.FC = () => {
     navigateTo,
     setActiveAppointment,
     startAppointmentConversation,
+    setBookingDraft,
+    isAuthLoading,
     isRtl,
     t,
   } = useApp();
 
   const [activeFilter, setActiveFilter] = useState<AppointmentStatus>('upcoming');
+  const [eligibility, setEligibility] = useState<Record<string, FollowUpEligibility>>({});
 
   const filtered = appointments.filter((apt) => apt.status === activeFilter);
+
+  // Lazily probe availability (existing GET /appointments/doctors/:id/availability)
+  // for completed appointments only — never for cancelled ones.
+  useEffect(() => {
+    let cancelledProbe = false;
+    const completed = appointments.filter((a) => a.status === 'completed');
+    completed.forEach(async (apt) => {
+      setEligibility((prev) =>
+        prev[apt.id] ? prev : { ...prev, [apt.id]: 'checking' },
+      );
+      let found = false;
+      for (let dayOffset = 0; dayOffset < 7 && !found; dayOffset++) {
+        const d = new Date();
+        d.setDate(d.getDate() + dayOffset);
+        const dateStr = d.toISOString().split('T')[0];
+        const slots = await fetchDoctorAvailabilityApi(apt.doctorId, dateStr);
+        if (slots.some((s) => s.available)) found = true;
+      }
+      if (!cancelledProbe) {
+        setEligibility((prev) => ({ ...prev, [apt.id]: found ? 'available' : 'no_slots' }));
+      }
+    });
+    return () => {
+      cancelledProbe = true;
+    };
+  }, [appointments]);
 
   const handleJoinCall = (apt: Appointment) => {
     setActiveAppointment(apt);
@@ -47,6 +92,51 @@ export const MyAppointmentsScreen: React.FC = () => {
     // backend seeds a system message there. Falls back to opening the chat
     // directly if the endpoint fails (friendly error shown via Alert).
     startAppointmentConversation(apt.id, apt.doctor);
+  };
+
+  // One-Tap Follow-Up: prefill the booking draft with the same doctor and
+  // skip straight to slot selection (patient details are prefilled already).
+  const handleFollowUp = async (apt: Appointment) => {
+    let found = false;
+    for (let dayOffset = 0; dayOffset < 7 && !found; dayOffset++) {
+      const d = new Date();
+      d.setDate(d.getDate() + dayOffset);
+      const dateStr = d.toISOString().split('T')[0];
+      const slots = await fetchDoctorAvailabilityApi(apt.doctorId, dateStr);
+      if (slots.some((s) => s.available)) {
+        found = true;
+        setBookingDraft({
+          doctor: apt.doctor,
+          consultationType: apt.consultationType,
+          date: dateStr,
+          timeSlot: slots.find((s) => s.available)?.start,
+          appointmentDate: slots.find((s) => s.available)?.datetime,
+          symptoms: t('Follow-up consultation.', 'استشارة متابعة.'),
+        });
+      }
+    }
+    if (found) {
+      navigateTo('doctor_detail', { doctor: apt.doctor });
+    } else {
+      Alert.alert(
+        t('No available slots', 'لا توجد مواعيد متاحة'),
+        t(
+          `Dr. ${apt.doctor.name} has no open follow-up slots in the next 7 days.`,
+          `لا توجد مواعيد متابعة متاحة مع ${apt.doctor.nameAr} خلال الأيام السبعة القادمة.`,
+        ),
+        [
+          {
+            text: t('View other times', 'عرض أوقات أخرى'),
+            onPress: () => navigateTo('doctor_detail', { doctor: apt.doctor }),
+          },
+          {
+            text: t('Find another doctor', 'ابحث عن طبيب آخر'),
+            onPress: () => navigateTo('doctors'),
+          },
+          { text: t('Cancel', 'إلغاء'), style: 'cancel' },
+        ],
+      );
+    }
   };
 
   return (
