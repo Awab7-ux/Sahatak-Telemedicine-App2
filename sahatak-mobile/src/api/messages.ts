@@ -217,16 +217,24 @@ export async function searchMessagesApi(
   return unwrap(response);
 }
 
-/** GET /messages/unread-count — { total_unread, conversations_with_unread }. */
+/** GET /messages/unread-count — { total_unread, conversations_with_unread }.
+ * A 404 (endpoint not yet deployed) or any network/malformed-response error is
+ * treated as "no unread messages" instead of throwing, so polling never breaks
+ * the UI (HomeScreen previously white-screened when this 404'd). */
 export async function getUnreadCountApi(): Promise<RawUnreadCount> {
-  const response = await apiClient.get<ApiEnvelope<RawUnreadCount>>(
-    '/messages/unread-count',
-  );
-  const data = unwrap(response);
-  return {
-    total_unread: data?.total_unread ?? 0,
-    conversations_with_unread: data?.conversations_with_unread ?? [],
-  };
+  try {
+    const response = await apiClient.get<ApiEnvelope<RawUnreadCount>>(
+      '/messages/unread-count',
+    );
+    const data = unwrap(response);
+    return {
+      total_unread: data?.total_unread ?? 0,
+      conversations_with_unread: data?.conversations_with_unread ?? [],
+    };
+  } catch (err) {
+    console.warn('[messages] /messages/unread-count unavailable — treating as no unread:', err);
+    return { total_unread: 0, conversations_with_unread: [] };
+  }
 }
 
 /** PUT /messages/conversations/<id>/archive — archive a conversation. */

@@ -117,7 +117,7 @@ export const HomeScreen: React.FC = () => {
           >
             <Bell size={20} color={Colors.slate[700]} />
             {/* Non-essential unread badge — suppressed by Calm Mode "reduce notifications". */}
-            {!calmUi.reduce_notifications && unreadNotificationsCount > 0 && <View style={styles.bellBadge} />}
+            {!calmUi?.reduce_notifications && unreadNotificationsCount > 0 && <View style={styles.bellBadge} />}
           </TouchableOpacity>
         </View>
 

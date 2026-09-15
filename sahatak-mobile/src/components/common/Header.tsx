@@ -158,7 +158,7 @@ export const Header: React.FC<HeaderProps> = ({
             <Bell size={18} color={whiteText ? Colors.white : Colors.slate[700]} />
             {/* Non-essential unread badge — suppressed by Calm Mode "reduce notifications".
                 Notifications themselves remain fully accessible; nothing medical is hidden. */}
-            {!calmUi.reduce_notifications && unreadNotificationsCount > 0 && <View style={styles.notifBadge} />}
+            {!calmUi?.reduce_notifications && unreadNotificationsCount > 0 && <View style={styles.notifBadge} />}
           </TouchableOpacity>
         )}
 
