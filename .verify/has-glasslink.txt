@@ -1,0 +1,4 @@
+c:\sahatak\Sahatak-Telemedicine-Platform-App\Sahatak-2\frontend\pages\admin\admin.html
+c:\sahatak\Sahatak-Telemedicine-Platform-App\Sahatak-2\frontend\pages\appointments\appointment-list.html
+c:\sahatak\Sahatak-Telemedicine-Platform-App\Sahatak-2\frontend\pages\appointments\book-appointment.html
+c:\sahatak\Sahatak-Telemedicine-Platform-App\Sahatak-2\frontend\pages\common\maintenance.html

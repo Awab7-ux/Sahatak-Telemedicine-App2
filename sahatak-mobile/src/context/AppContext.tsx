@@ -33,6 +33,13 @@ import { navigate, goBack as navGoBack } from '../navigation/navigationRef';
 import { getAuthToken, removeAuthToken, ApiError } from '../api/client';
 import { fetchCurrentUser, loginUser, registerUser, RegisterPayload } from '../api/auth';
 import { updateProfileApi } from '../api/profile';
+import {
+  CalmUiPrefs,
+  DEFAULT_CALM_UI_PREFS,
+  extractCalmUiPrefs,
+  fetchPatientPreferencesApi,
+  updateCalmUiPrefsApi,
+} from '../api/userSettings';
 import { fetchDoctorsApi } from '../api/doctors';
 import { fetchProductsApi } from '../api/pharmacy';
 import { fetchAppointmentsApi, createAppointmentApi, cancelAppointmentApi } from '../api/appointments';
@@ -139,6 +146,10 @@ interface AppContextType {
   bookingDraft: Partial<Appointment>;
   setBookingDraft: React.Dispatch<React.SetStateAction<Partial<Appointment>>>;
 
+  // Calm Mode (UI preferences; stored in notification_preferences.ui)
+  calmUi: CalmUiPrefs;
+  setCalmUi: (prefs: Partial<CalmUiPrefs>) => Promise<void>;
+
   // Video call state
   isVideoCallActive: boolean;
   setIsVideoCallActive: (active: boolean) => void;
@@ -148,6 +159,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 const LANG_STORAGE_KEY = 'sahatak_language';
 const CART_STORAGE_KEY = 'sahatak_cart';
+const CALM_UI_STORAGE_KEY = 'sahatak_calm_ui';
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [lang, setLangState] = useState<Language>('en');
@@ -182,6 +194,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [bookingDraft, setBookingDraft] = useState<Partial<Appointment>>({});
   const [isVideoCallActive, setIsVideoCallActive] = useState<boolean>(false);
+
+  // Calm Mode — cached locally for instant apply, synced with the backend on login.
+  const [calmUi, setCalmUiState] = useState<CalmUiPrefs>(DEFAULT_CALM_UI_PREFS);
+
+  const setCalmUi = async (prefs: Partial<CalmUiPrefs>): Promise<void> => {
+    const next = { ...calmUi, ...prefs };
+    // Instant local apply + cache (no network round trip required for UI).
+    setCalmUiState(next);
+    try {
+      await AsyncStorage.setItem(CALM_UI_STORAGE_KEY, JSON.stringify(next));
+    } catch (e) {
+      console.warn('[AppContext] Could not cache calm mode prefs locally:', e);
+    }
+    // Persist via the existing patient preferences endpoint.
+    try {
+      const current = await fetchPatientPreferencesApi();
+      await updateCalmUiPrefsApi(current?.notification_preferences, next);
+    } catch (e) {
+      console.warn('[AppContext] Could not persist calm mode prefs to server:', e);
+    }
+  };
+
+  // Load cached calm mode immediately on mount.
+  useEffect(() => {
+    AsyncStorage.getItem(CALM_UI_STORAGE_KEY)
+      .then((raw) => {
+        // Guard against malformed/partial cache: always merge onto the defaults
+        // so `calmUi` can never be undefined or miss a key (crash-proofing).
+        const cached = raw ? JSON.parse(raw) : null;
+        if (cached && typeof cached === 'object' && !Array.isArray(cached)) {
+          setCalmUiState({ ...DEFAULT_CALM_UI_PREFS, ...cached });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Sync with the backend value once authenticated (login).
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+    let cancelled = false;
+    fetchPatientPreferencesApi()
+      .then((prefs) => {
+        if (!cancelled && prefs) {
+          const serverUi = extractCalmUiPrefs(prefs);
+          setCalmUiState(serverUi);
+          AsyncStorage.setItem(CALM_UI_STORAGE_KEY, JSON.stringify(serverUi)).catch(() => {});
+        }
+      })
+      .catch((e) => {
+        console.warn('[AppContext] Could not sync calm mode prefs from server:', e);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, user?.id]);
 
   // Ref to track the conversation ID currently open in DoctorChatScreen
   const activeChatConversationId = useRef<string>('');
@@ -330,6 +397,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       case 'my_appointments':
         setActiveTabState('history');
         navigate('MyAppointments');
+        break;
+      case 'care_summary':
+        navigate('CareSummary', params);
         break;
       case 'notifications':
         navigate('Notifications');
@@ -814,6 +884,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSearchQuery,
         bookingDraft,
         setBookingDraft,
+        calmUi,
+        setCalmUi,
         isVideoCallActive,
         setIsVideoCallActive,
       }}

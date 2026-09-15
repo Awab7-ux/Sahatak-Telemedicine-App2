@@ -1,0 +1,7 @@
+c:\sahatak\Sahatak-Telemedicine-Platform-App\Sahatak-2\frontend\pages\admin\admin.html
+c:\sahatak\Sahatak-Telemedicine-Platform-App\Sahatak-2\frontend\pages\admin\index.html
+c:\sahatak\Sahatak-Telemedicine-Platform-App\Sahatak-2\frontend\pages\common\support.html
+c:\sahatak\Sahatak-Telemedicine-Platform-App\Sahatak-2\frontend\pages\dashboard\doctor.html
+c:\sahatak\Sahatak-Telemedicine-Platform-App\Sahatak-2\frontend\pages\dashboard\patient.html
+c:\sahatak\Sahatak-Telemedicine-Platform-App\Sahatak-2\frontend\pages\medical\doctor\completionProfile.html
+c:\sahatak\Sahatak-Telemedicine-Platform-App\Sahatak-2\frontend\pages\reset-password.html

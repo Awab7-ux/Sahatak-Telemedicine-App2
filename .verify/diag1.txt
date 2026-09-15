@@ -1,0 +1,38 @@
+﻿MR L364: .stat-card {
+MR L374: .stat-card:hover {
+MR L623: .stat-card {
+MR L630: .stat-card:hover {
+MR L705: .stat-card {
+MR L714: .stat-card:hover {
+MR L721: .stat-card .stat-value {
+MR L728: .stat-card .stat-label {
+MR L735: .stat-card .stat-icon {
+MR L741: .stats-grid .stat-card:hover {
+--- ehr-glass box-shadow
+EHR L86: box-shadow:
+EHR L111: box-shadow: 0 2px 8px rgba(37, 99, 235, 0.30), 0 12px 28px rgba(15, 23, 42, 0.14);
+EHR L128: background-color 0.25s ease, box-shadow 0.25s ease,
+EHR L137: box-shadow: 0 6px 16px rgba(220, 38, 38, 0.12);
+EHR L165: box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28);
+EHR L166: transition: box-shadow 0.25s ease, transform 0.25s ease;
+EHR L173: box-shadow: 0 8px 22px rgba(37, 99, 235, 0.38);
+EHR L186: box-shadow: var(--cg-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+EHR L188: transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+EHR L193: box-shadow: var(--cg-shadow-hover), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+EHR L267: box-shadow: var(--cg-shadow);
+EHR L298: box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 16px rgba(15, 23, 42, 0.05);
+EHR L299: transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+EHR L304: box-shadow: 0 4px 10px rgba(37, 99, 235, 0.10), 0 14px 30px rgba(15, 23, 42, 0.09);
+EHR L374: box-shadow: inset 0 -3px 0 #1d4ed8;
+EHR L384: box-shadow: var(--cg-shadow);
+EHR L400: transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+EHR L402: box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 16px rgba(15, 23, 42, 0.05);
+EHR L407: box-shadow: 0 4px 10px rgba(37, 99, 235, 0.10), 0 16px 32px rgba(15, 23, 42, 0.09);
+EHR L428: box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+EHR L480: box-shadow: var(--cg-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+EHR L490: box-shadow: var(--cg-shadow-hover), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+EHR L525: box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12), 0 10px 24px rgba(15, 23, 42, 0.07);
+EHR L552: box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 16px rgba(15, 23, 42, 0.04);
+EHR L553: transition: box-shadow 0.25s ease, border-color 0.25s ease;
+EHR L557: box-shadow: 0 6px 18px rgba(13, 148, 136, 0.10);
+EHR L592: border-color 0.25s ease, box-shadow 0.25s ease,

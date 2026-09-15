@@ -1,0 +1,54 @@
+﻿=== icon rules in clinical-glass.css
+CG L22: --cg-blue        #1d4ed8   6.3:1 with white text — icons/links, AA all sizes
+CG L323: 4. Icon badge — circular tinted disc behind an icon (Bootstrap Icons)
+CG L324: Use: <span class="cg-icon-badge cg-icon-teal"><i class="bi bi-chat"></i></span>
+CG L327: 4. Icon badge — doctor-grade saturated gradient chip with white glyph.
+CG L329: .quick-action-icon: gradient surface, white icon, colored drop shadow.
+CG L334: .cg-icon-badge {
+CG L348: .cg-icon-blue    { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); box-shadow: 0 6px 16px rgba(
+CG L349: .cg-icon-teal    { background: linear-gradient(135deg, #0d9488 0%, #0e7490 100%); box-shadow: 0 6px 16px rgba(
+CG L350: .cg-icon-violet  { background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%); box-shadow: 0 6px 16px rgba(
+CG L351: .cg-icon-coral   { background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); box-shadow: 0 6px 16px rgba(
+CG L352: .cg-icon-emerald { background: linear-gradient(135deg, #059669 0%, #047857 100%); box-shadow: 0 6px 16px rgba(
+CG L354: /* Icon animation on interactive cards — mirrors the doctor quick-action
+CG L356: .cg-glass-lift:hover .cg-icon-badge,
+CG L357: .cg-glass-lift:focus-visible .cg-icon-badge {
+CG L361: .cg-glass-lift:hover .cg-icon-blue,
+CG L362: .cg-glass-lift:focus-visible .cg-icon-blue {
+CG L365: .cg-glass-lift:hover .cg-icon-teal,
+CG L366: .cg-glass-lift:focus-visible .cg-icon-teal {
+CG L369: .cg-glass-lift:hover .cg-icon-violet,
+CG L370: .cg-glass-lift:focus-visible .cg-icon-violet {
+CG L373: .cg-glass-lift:hover .cg-icon-coral,
+CG L374: .cg-glass-lift:focus-visible .cg-icon-coral {
+CG L377: .cg-glass-lift:hover .cg-icon-emerald,
+CG L378: .cg-glass-lift:focus-visible .cg-icon-emerald {
+CG L382: .cg-icon-sm { width: 40px; height: 40px; flex-basis: 40px; font-size: 1.1rem; border-radius: 11px; }
+CG L383: .cg-icon-lg { width: 64px; height: 64px; flex-basis: 64px; font-size: 1.7rem; border-radius: 17px; }
+CG L416: 6. Pill badges — status chips (self-contained; no Bootstrap bg-* needed)
+CG L455: .cg-icon-badge {
+CG L460: .cg-glass-lift:hover .cg-icon-badge,
+CG L461: .cg-glass-lift:focus-visible .cg-icon-badge {
+=== icon rules in doctor-dashboard-glass.css
+DOC L264: /* Colored icon badges: saturated gradient chips with white glyphs.
+DOC L265: White icon on #0e7490 = 5.8:1, on #6d28d9 = 6.6:1, on #047857 = 5.8:1 —
+DOC L267: .quick-action-icon {
+DOC L273: #communication-card .quick-action-icon {
+DOC L278: #records-card .quick-action-icon {
+DOC L283: #availability-card .quick-action-icon {
+DOC L478: .quick-action-icon { width: 58px; height: 58px; font-size: 1.5rem; }
+=== submodule status
+ M ACCESSIBILITY_FOLLOWUP.md
+ M frontend/pages/common/maintenance.html
+ M frontend/pages/common/services.html
+ M frontend/pages/dashboard/patient.html
+ M frontend/pages/medical/doctor/setAvailability.html
+ M frontend/pages/medical/patient/medicalHistory.html
+ M frontend/pages/medical/patient/medicalHistoryForm.html
+ M frontend/pages/medical/patient/prescriptions.html
+?? backend/logs/
+?? backend/static/
+?? test_payload.json
+=== about.html diff script lines
+=== services.html diff script lines
+=== completionProfile diff stat

@@ -8,7 +8,6 @@ import {
   ClinicLocation,
   ConsultationType,
 } from '../types';
-
 export type BottomTabParamList = {
   HomeTab: undefined;
   MessagesTab: { doctor?: Doctor } | undefined;
@@ -23,7 +22,9 @@ export type RootStackParamList = {
   MainTabs: NavigatorScreenParams<BottomTabParamList> | undefined;
   DoctorList: { categoryId?: string; query?: string } | undefined;
   DoctorDetail: { doctor?: Doctor; doctorId?: string } | undefined;
-  BookingFlow: { doctor?: Doctor; consultationType?: ConsultationType } | undefined;
+  BookingFlow:
+    | { doctor?: Doctor; consultationType?: ConsultationType; initialStep?: 1 | 2 | 3 }
+    | undefined;
   VideoConsultation: { appointment?: Appointment; doctor?: Doctor } | undefined;
   DoctorChat: { doctor?: Doctor; doctorId?: string } | undefined;
   Conversations: undefined;
@@ -34,6 +35,7 @@ export type RootStackParamList = {
   MedicalCheckup: { package?: MedicalCheckupPackage } | undefined;
   MedicalRecords: { record?: MedicalRecord } | undefined;
   MyAppointments: undefined;
+  CareSummary: { appointmentId?: string } | undefined;
   Notifications: undefined;
   Profile: undefined;
 };

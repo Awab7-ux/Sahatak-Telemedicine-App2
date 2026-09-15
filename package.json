@@ -14,14 +14,15 @@
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^17.2.3",
+    "expo": "~57.0.18",
     "express": "^4.21.2",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
+    "playwright-core": "^1.63.0",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
-    "vite": "^6.2.3",
-    "expo": "~57.0.18",
-    "react-native": "0.86.3"
+    "react-native": "0.86.3",
+    "vite": "^6.2.3"
   },
   "devDependencies": {
     "@expo/cli": "^57.0.20",

@@ -1,0 +1,218 @@
+﻿=== services shadow-sm lines
+L153: <div class="card h-100 shadow-sm cg-glass cg-glass-strong">
+L198: <div class="card h-100 shadow-sm cg-glass cg-glass-strong">
+L212: <div class="card h-100 shadow-sm cg-glass cg-glass-strong">
+L226: <div class="card h-100 shadow-sm cg-glass cg-glass-strong">
+L239: <div class="card h-100 shadow-sm cg-glass cg-glass-strong">
+L253: <div class="card h-100 shadow-sm cg-glass cg-glass-strong">
+L267: <div class="card h-100 shadow-sm cg-glass cg-glass-strong">
+L281: <div class="card h-100 shadow-sm cg-glass cg-glass-strong">
+L295: <div class="card h-100 shadow-sm cg-glass cg-glass-strong">
+=== services L125-140
+L125:                                     border-top: 1px solid rgba(13,71,161,0.06);
+L126:                                 }
+L127: 
+L128:                                 /* Subtle borders and rounded corners for panels */
+L129:                                 .card,
+L130:                                 .modal-content,
+L131:                                 .profile-section {
+L132:                                     border: 1px solid rgba(13,71,161,0.08);
+L133:                                     border-radius: 8px;
+L134:                                     box-shadow: 0 1px 4px rgba(13,71,161,0.03);
+L135:                                 }
+L136: 
+L137:                                 /* Ensure readable text color on white/blue backgrounds */
+L138:                                 body, .card, .profile-section, .dashboard-header {
+L139:                                     color: #062a43;
+L140:                                 }
+L141: 
+=== reset L24-40
+L24:         .reset-card {
+L25:             background: white;
+L26:             border-radius: 15px;
+L27:             padding: 2rem;
+L28:             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+L29:             max-width: 500px;
+L30:             width: 100%;
+L31:             margin: 1rem;
+L32:         }
+L33:         .logo {
+L34:             text-align: center;
+L35:             margin-bottom: 2rem;
+L36:         }
+L37:         .logo h2 {
+L38:             color: var(--medical-blue);
+L39:             font-weight: bold;
+L40:         }
+=== verify-email L24-40
+L24:         .verify-card {
+L25:             background: white;
+L26:             border-radius: 15px;
+L27:             padding: 2rem;
+L28:             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+L29:             max-width: 500px;
+L30:             width: 100%;
+L31:             margin: 1rem;
+L32:         }
+L33:         .spinner-border {
+L34:             width: 3rem;
+L35:             height: 3rem;
+L36:         }
+L37:         .success-icon {
+L38:             font-size: 4rem;
+L39:             color: #28a745;
+L40:         }
+=== about L495-515
+L495:                         This platform does not replace visiting a doctor in emergency cases
+L496:                     </p>
+L497:                 </div>
+L498:             </div>
+L499:         </div>
+L500:     </footer>
+L501:                             <script src="../../assets/js/main.js"></script>
+L502:                             
+L503:                                         <!-- Dashboard Translations -->
+L504:                         <script src="../../assets/js/components/dashboard-translations.js"></script>
+L505: 
+L506:                         <!-- About page: inline translation loader (loads ../../locales/{en|ar}/about.json) -->
+L507:                         <script>
+L508:                         (function(){
+L509:                             async function loadAboutTranslations(lang) {
+L510:                                 const base = '../../locales/';
+L511:                                 // Prefer per-language about.json under locales/{lang}/about.json
+L512:                                 const candidates = [
+L513:                                     `${base}${lang}/about.json`,
+L514:                                     `${base}${lang}.json`,
+L515:                                     `${base}en/about.json` // fallback
+=== maintenance L70-200
+L70:                 transform: translateY(0);
+L71:             }
+L72:         }
+L73: 
+L74:         .maintenance-icon {
+L75:             font-size: 5rem;
+L76:             color: var(--medical-primary);
+L77:             margin-bottom: 1.5rem;
+L78:             animation: pulse 2s infinite;
+L79:         }
+L80: 
+L81:         @keyframes pulse {
+L82:             0%, 100% {
+L83:                 transform: scale(1);
+L84:             }
+L85:             50% {
+L86:                 transform: scale(1.05);
+L87:             }
+L88:         }
+L89: 
+L90:         .maintenance-title {
+L91:             font-size: 2rem;
+L92:             font-weight: 700;
+L93:             color: #1e293b;
+L94:             margin-bottom: 1rem;
+L95:         }
+L96: 
+L97:         .maintenance-subtitle {
+L98:             font-size: 1.5rem;
+L99:             font-weight: 600;
+L100:             color: #475569;
+L101:             margin-bottom: 2rem;
+L102:         }
+L103: 
+L104:         .maintenance-message {
+L105:             font-size: 1.1rem;
+L106:             color: #64748b;
+L107:             margin-bottom: 2rem;
+L108:             line-height: 1.6;
+L109:         }
+L110: 
+L111:         .progress-bar-container {
+L112:             background: #f1f5f9;
+L113:             border-radius: 10px;
+L114:             height: 8px;
+L115:             overflow: hidden;
+L116:             margin-bottom: 2rem;
+L117:         }
+L118: 
+L119:         .progress-bar-fill {
+L120:             height: 100%;
+L121:             background: linear-gradient(90deg, var(--medical-primary) 0%, var(--medical-primary-dark) 100%);
+L122:             animation: progress 2s ease-in-out infinite;
+L123:         }
+L124: 
+L125:         @keyframes progress {
+L126:             0% {
+L127:                 width: 0%;
+L128:             }
+L129:             50% {
+L130:                 width: 70%;
+L131:             }
+L132:             100% {
+L133:                 width: 100%;
+L134:             }
+L135:         }
+L136: 
+L137:         .retry-button {
+L138:             background: var(--medical-primary);
+L139:             color: white;
+L140:             border: none;
+L141:             padding: 0.75rem 2rem;
+L142:             border-radius: 10px;
+L143:             font-weight: 600;
+L144:             font-size: 1rem;
+L145:             cursor: pointer;
+L146:             transition: all 0.3s;
+L147:             touch-action: manipulation;
+L148:             -webkit-tap-highlight-color: transparent;
+L149:         }
+L150: 
+L151:         .retry-button:hover {
+L152:             background: var(--medical-primary-dark);
+L153:             transform: translateY(-2px);
+L154:             box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+L155:         }
+L156: 
+L157:         .retry-button:active {
+L158:             transform: translateY(0);
+L159:             box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+L160:         }
+L161: 
+L162:         .contact-info {
+L163:             margin-top: 2rem;
+L164:             padding-top: 2rem;
+L165:             border-top: 1px solid #e2e8f0;
+L166:             color: #64748b;
+L167:             font-size: 0.9rem;
+L168:         }
+L169: 
+L170:         .contact-info a {
+L171:             color: var(--medical-primary);
+L172:             text-decoration: none;
+L173:             font-weight: 600;
+L174:         }
+L175: 
+L176:         .contact-info a:hover {
+L177:             text-decoration: underline;
+L178:         }
+L179: 
+L180:         /* RTL Support */
+L181:         [dir="rtl"] {
+L182:             text-align: center;
+L183:         }
+L184: 
+L185:         /* Mobile Responsiveness */
+L186:         @media (max-width: 768px) {
+L187:             .maintenance-container {
+L188:                 padding: 2rem 1.5rem;
+L189:                 border-radius: 15px;
+L190:                 width: 95%;
+L191:                 margin: 0.5rem;
+L192:             }
+L193: 
+L194:             .maintenance-icon {
+L195:                 font-size: 3.5rem;
+L196:                 margin-bottom: 1rem;
+L197:             }
+L198: 
+L199:             .maintenance-title {
+L200:                 font-size: 1.5rem;

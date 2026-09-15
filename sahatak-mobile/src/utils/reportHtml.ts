@@ -109,10 +109,13 @@ export async function buildMedicalRecordHtml(
   const date = esc(rtl ? record.dateAr : record.date);
   const status = esc(rtl ? record.statusAr : record.status);
   const clinic = esc(rtl ? record.facilityAr || record.clinicNameAr : record.facility || record.clinicName);
+  const summaryValues = rtl
+    ? [record.diagnosisSummaryAr || record.diagnosisSummary, record.diagnosisAr || record.diagnosis]
+    : [record.diagnosisSummary, record.diagnosis];
   const summary = esc(
-    rtl
-      ? record.diagnosisSummaryAr || record.diagnosisAr || record.diagnosisSummary || record.diagnosis
-      : record.diagnosisSummary || record.diagnosis,
+    record.type === 'consultation_summary' || record.type === 'diagnosis'
+      ? summaryValues.filter(Boolean).join('\n\n')
+      : summaryValues[0] || '',
   );
 
   const medicinesRows = (record.medicines ?? [])

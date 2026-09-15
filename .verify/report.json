@@ -1,0 +1,216 @@
+[
+  {
+    "page": "patient-dashboard",
+    "url": "http://localhost:8742/frontend/pages/dashboard/patient.html?dev=true",
+    "redirectedAway": false,
+    "consoleErrors": [
+      "Failed to load dashboard data"
+    ],
+    "envFetchErrors": 19,
+    "uncaughtExceptions": [],
+    "glassOk": false,
+    "blurOk": true,
+    "webkitOk": false,
+    "shadowOk": true,
+    "iconsOk": true,
+    "pageOk": false,
+    "details": {
+      "title": "Patient Dashboard - Sahatak",
+      "cardCount": 10,
+      "cards": [
+        {
+          "selector": "dashboard-card quick-action-card cg-glass cg-glass-lift cg-t",
+          "backdrop": "blur(14px) saturate(1.6)",
+          "webkitBackdrop": "none",
+          "shadow": "rgba(15, 23, 42, 0.04) 0px 1px 2px 0px, rgba(15, 23, 42, 0.06) 0px 8px 20px 0px, rgba(15, 23, 42, 0.05) 0px 24px 48px 0px, rgba(255, 255, 255, 0.8) 0px 1px 0px 0px inset"
+        },
+        {
+          "selector": "dashboard-card quick-action-card cg-glass cg-glass-lift cg-t",
+          "backdrop": "blur(14px) saturate(1.6)",
+          "webkitBackdrop": "none",
+          "shadow": "rgba(15, 23, 42, 0.04) 0px 1px 2px 0px, rgba(15, 23, 42, 0.06) 0px 8px 20px 0px, rgba(15, 23, 42, 0.05) 0px 24px 48px 0px, rgba(255, 255, 255, 0.8) 0px 1px 0px 0px inset"
+        },
+        {
+          "selector": "dashboard-card quick-action-card cg-glass cg-glass-lift cg-t",
+          "backdrop": "blur(14px) saturate(1.6)",
+          "webkitBackdrop": "none",
+          "shadow": "rgba(15, 23, 42, 0.04) 0px 1px 2px 0px, rgba(15, 23, 42, 0.06) 0px 8px 20px 0px, rgba(15, 23, 42, 0.05) 0px 24px 48px 0px, rgba(255, 255, 255, 0.8) 0px 1px 0px 0px inset"
+        },
+        {
+          "selector": "dashboard-card stat-card cg-glass",
+          "backdrop": "blur(14px) saturate(1.6)",
+          "webkitBackdrop": "none",
+          "shadow": "rgba(15, 23, 42, 0.04) 0px 1px 2px 0px, rgba(15, 23, 42, 0.06) 0px 8px 20px 0px, rgba(15, 23, 42, 0.05) 0px 24px 48px 0px, rgba(255, 255, 255, 0.8) 0px 1px 0px 0px inset"
+        },
+        {
+          "selector": "dashboard-card stat-card cg-glass",
+          "backdrop": "blur(14px) saturate(1.6)",
+          "webkitBackdrop": "none",
+          "shadow": "rgba(15, 23, 42, 0.04) 0px 1px 2px 0px, rgba(15, 23, 42, 0.06) 0px 8px 20px 0px, rgba(15, 23, 42, 0.05) 0px 24px 48px 0px, rgba(255, 255, 255, 0.8) 0px 1px 0px 0px inset"
+        },
+        {
+          "selector": "dashboard-card stat-card cg-glass",
+          "backdrop": "blur(14px) saturate(1.6)",
+          "webkitBackdrop": "none",
+          "shadow": "rgba(15, 23, 42, 0.04) 0px 1px 2px 0px, rgba(15, 23, 42, 0.06) 0px 8px 20px 0px, rgba(15, 23, 42, 0.05) 0px 24px 48px 0px, rgba(255, 255, 255, 0.8) 0px 1px 0px 0px inset"
+        },
+        {
+          "selector": "dashboard-card cg-glass cg-glass-strong",
+          "backdrop": "blur(14px) saturate(1.6)",
+          "webkitBackdrop": "none",
+          "shadow": "rgba(15, 23, 42, 0.04) 0px 1px 2px 0px, rgba(15, 23, 42, 0.06) 0px 8px 20px 0px, rgba(15, 23, 42, 0.05) 0px 24px 48px 0px, rgba(255, 255, 255, 0.8) 0px 1px 0px 0px inset"
+        },
+        {
+          "selector": "dashboard-card cg-glass cg-glass-strong",
+          "backdrop": "blur(14px) saturate(1.6)",
+          "webkitBackdrop": "none",
+          "shadow": "rgba(15, 23, 42, 0.04) 0px 1px 2px 0px, rgba(15, 23, 42, 0.06) 0px 8px 20px 0px, rgba(15, 23, 42, 0.05) 0px 24px 48px 0px, rgba(255, 255, 255, 0.8) 0px 1px 0px 0px inset"
+        }
+      ],
+      "fontFamily": "Inter, \"Noto Sans Arabic\", system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "iconsTotal": 39,
+      "iconsVisible": 16,
+      "fontsCheck": true,
+      "iconGlyphsRendered": 16
+    },
+    "screenshot": "C:\\sahatak\\Sahatak-Telemedicine-Platform-App\\.verify\\screenshots\\patient-dashboard.png"
+  },
+  {
+    "page": "admin-dashboard",
+    "url": "http://localhost:8742/frontend/pages/admin/admin.html?dev=true",
+    "redirectedAway": false,
+    "consoleErrors": [],
+    "envFetchErrors": 1,
+    "uncaughtExceptions": [],
+    "glassOk": false,
+    "blurOk": true,
+    "webkitOk": false,
+    "shadowOk": true,
+    "iconsOk": true,
+    "pageOk": true,
+    "details": {
+      "title": "Admin Dashboard - Sahatak",
+      "cardCount": 11,
+      "cards": [
+        {
+          "selector": "dashboard-card stat-card admin-stat-card cg-glass",
+          "backdrop": "blur(14px) saturate(1.6)",
+          "webkitBackdrop": "none",
+          "shadow": "rgba(15, 23, 42, 0.04) 0px 1px 2px 0px, rgba(15, 23, 42, 0.06) 0px 8px 20px 0px, rgba(15, 23, 42, 0.05) 0px 24px 48px 0px, rgba(255, 255, 255, 0.8) 0px 1px 0px 0px inset"
+        },
+        {
+          "selector": "dashboard-card stat-card admin-stat-card cg-glass",
+          "backdrop": "blur(14px) saturate(1.6)",
+          "webkitBackdrop": "none",
+          "shadow": "rgba(15, 23, 42, 0.04) 0px 1px 2px 0px, rgba(15, 23, 42, 0.06) 0px 8px 20px 0px, rgba(15, 23, 42, 0.05) 0px 24px 48px 0px, rgba(255, 255, 255, 0.8) 0px 1px 0px 0px inset"
+        },
+        {
+          "selector": "dashboard-card stat-card admin-stat-card cg-glass",
+          "backdrop": "blur(14px) saturate(1.6)",
+          "webkitBackdrop": "none",
+          "shadow": "rgba(15, 23, 42, 0.04) 0px 1px 2px 0px, rgba(15, 23, 42, 0.06) 0px 8px 20px 0px, rgba(15, 23, 42, 0.05) 0px 24px 48px 0px, rgba(255, 255, 255, 0.8) 0px 1px 0px 0px inset"
+        },
+        {
+          "selector": "dashboard-card stat-card admin-stat-card cg-glass",
+          "backdrop": "blur(14px) saturate(1.6)",
+          "webkitBackdrop": "none",
+          "shadow": "rgba(15, 23, 42, 0.04) 0px 1px 2px 0px, rgba(15, 23, 42, 0.06) 0px 8px 20px 0px, rgba(15, 23, 42, 0.05) 0px 24px 48px 0px, rgba(255, 255, 255, 0.8) 0px 1px 0px 0px inset"
+        },
+        {
+          "selector": "dashboard-card stat-card admin-stat-card cg-glass",
+          "backdrop": "blur(14px) saturate(1.6)",
+          "webkitBackdrop": "none",
+          "shadow": "rgba(15, 23, 42, 0.04) 0px 1px 2px 0px, rgba(15, 23, 42, 0.06) 0px 8px 20px 0px, rgba(15, 23, 42, 0.05) 0px 24px 48px 0px, rgba(255, 255, 255, 0.8) 0px 1px 0px 0px inset"
+        },
+        {
+          "selector": "dashboard-card admin-health-card cg-glass cg-glass-strong",
+          "backdrop": "blur(14px) saturate(1.6)",
+          "webkitBackdrop": "none",
+          "shadow": "rgba(15, 23, 42, 0.04) 0px 1px 2px 0px, rgba(15, 23, 42, 0.06) 0px 8px 20px 0px, rgba(15, 23, 42, 0.05) 0px 24px 48px 0px, rgba(255, 255, 255, 0.8) 0px 1px 0px 0px inset"
+        },
+        {
+          "selector": "dashboard-card cg-glass cg-glass-strong",
+          "backdrop": "blur(14px) saturate(1.6)",
+          "webkitBackdrop": "none",
+          "shadow": "rgba(15, 23, 42, 0.04) 0px 1px 2px 0px, rgba(15, 23, 42, 0.06) 0px 8px 20px 0px, rgba(15, 23, 42, 0.05) 0px 24px 48px 0px, rgba(255, 255, 255, 0.8) 0px 1px 0px 0px inset"
+        },
+        {
+          "selector": "dashboard-card cg-glass cg-glass-strong",
+          "backdrop": "blur(14px) saturate(1.6)",
+          "webkitBackdrop": "none",
+          "shadow": "rgba(15, 23, 42, 0.04) 0px 1px 2px 0px, rgba(15, 23, 42, 0.06) 0px 8px 20px 0px, rgba(15, 23, 42, 0.05) 0px 24px 48px 0px, rgba(255, 255, 255, 0.8) 0px 1px 0px 0px inset"
+        }
+      ],
+      "fontFamily": "Inter, \"Noto Sans Arabic\", system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "iconsTotal": 66,
+      "iconsVisible": 26,
+      "fontsCheck": true,
+      "iconGlyphsRendered": 26
+    },
+    "screenshot": "C:\\sahatak\\Sahatak-Telemedicine-Platform-App\\.verify\\screenshots\\admin-dashboard.png"
+  },
+  {
+    "page": "appointment-list",
+    "url": "http://localhost:8742/frontend/pages/appointments/appointment-list.html?dev=true",
+    "redirectedAway": false,
+    "consoleErrors": [],
+    "envFetchErrors": 2,
+    "uncaughtExceptions": [],
+    "glassOk": false,
+    "blurOk": true,
+    "webkitOk": false,
+    "shadowOk": true,
+    "iconsOk": true,
+    "pageOk": true,
+    "details": {
+      "title": "My Appointments - Sahatak",
+      "cardCount": 1,
+      "cards": [
+        {
+          "selector": "dashboard-card mb-5 cg-glass cg-glass-strong",
+          "backdrop": "blur(14px) saturate(1.6)",
+          "webkitBackdrop": "none",
+          "shadow": "rgba(15, 23, 42, 0.04) 0px 1px 2px 0px, rgba(15, 23, 42, 0.06) 0px 8px 20px 0px, rgba(15, 23, 42, 0.05) 0px 24px 48px 0px, rgba(255, 255, 255, 0.8) 0px 1px 0px 0px inset"
+        }
+      ],
+      "fontFamily": "Inter, \"Noto Sans Arabic\", system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "iconsTotal": 21,
+      "iconsVisible": 14,
+      "fontsCheck": true,
+      "iconGlyphsRendered": 14
+    },
+    "screenshot": "C:\\sahatak\\Sahatak-Telemedicine-Platform-App\\.verify\\screenshots\\appointment-list.png"
+  },
+  {
+    "page": "book-appointment",
+    "url": "http://localhost:8742/frontend/pages/appointments/book-appointment.html?dev=true",
+    "redirectedAway": false,
+    "consoleErrors": [],
+    "envFetchErrors": 3,
+    "uncaughtExceptions": [],
+    "glassOk": false,
+    "blurOk": true,
+    "webkitOk": false,
+    "shadowOk": true,
+    "iconsOk": true,
+    "pageOk": true,
+    "details": {
+      "title": "حجز موعد جديد - صحتك",
+      "cardCount": 1,
+      "cards": [
+        {
+          "selector": "dashboard-card cg-glass cg-glass-strong",
+          "backdrop": "blur(14px) saturate(1.6)",
+          "webkitBackdrop": "none",
+          "shadow": "rgba(15, 23, 42, 0.04) 0px 1px 2px 0px, rgba(15, 23, 42, 0.06) 0px 8px 20px 0px, rgba(15, 23, 42, 0.05) 0px 24px 48px 0px, rgba(255, 255, 255, 0.8) 0px 1px 0px 0px inset"
+        }
+      ],
+      "fontFamily": "Inter, \"Noto Sans Arabic\", system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "iconsTotal": 20,
+      "iconsVisible": 13,
+      "fontsCheck": true,
+      "iconGlyphsRendered": 13
+    },
+    "screenshot": "C:\\sahatak\\Sahatak-Telemedicine-Platform-App\\.verify\\screenshots\\book-appointment.png"
+  }
+]

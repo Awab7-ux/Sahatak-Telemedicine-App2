@@ -16,7 +16,8 @@ export type ScreenType =
   | 'notifications'
   | 'my_appointments'
   | 'profile'
-  | 'cart';
+  | 'cart'
+  | 'care_summary';
 
 export type BottomNavTab = 'home' | 'messages' | 'cart' | 'history' | 'profile';
 

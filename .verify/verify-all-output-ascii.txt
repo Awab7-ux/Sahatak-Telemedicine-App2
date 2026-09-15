@@ -1,0 +1,26 @@
+FAIL forgot-password css=true canvas=true mesh=true cards=1 blur14=true webkit=false shadow=false icons=true console=true
+FAIL reset-password css=true canvas=true mesh=true cards=1 blur14=true webkit=false shadow=false icons=true console=true
+FAIL verify-email css=true canvas=true mesh=true cards=1 blur14=true webkit=false shadow=false icons=true console=true
+FAIL admin-dashboard css=true canvas=true mesh=true cards=1 blur14=true webkit=false shadow=true icons=true console=true REDIRECTED
+FAIL admin-login css=true canvas=true mesh=true cards=1 blur14=true webkit=false shadow=true icons=true console=true
+FAIL appointment-list css=true canvas=true mesh=true cards=1 blur14=true webkit=false shadow=true icons=true console=true
+FAIL book-appointment css=true canvas=true mesh=true cards=1 blur14=true webkit=false shadow=true icons=true console=true
+FAIL video-consultation css=true canvas=true mesh=true cards=1 blur14=true webkit=false shadow=true icons=true console=true
+FAIL about css=true canvas=true mesh=true cards=13 blur14=true webkit=false shadow=false icons=true console=false
+   errors: TypeError: Cannot read properties of null (reading 'addEventListener') | SyntaxError: Identifier 'DashboardTranslations' has already been declared
+FAIL maintenance css=true canvas=false mesh=false cards=1 blur14=false webkit=false shadow=false icons=true console=true
+FAIL services css=true canvas=true mesh=true cards=9 blur14=true webkit=false shadow=false icons=true console=false
+   errors: SyntaxError: Illegal return statement
+FAIL support css=true canvas=true mesh=true cards=2 blur14=true webkit=false shadow=false icons=true console=true
+FAIL doctor-dashboard css=true canvas=false mesh=true cards=9 blur14=true webkit=false shadow=true icons=true console=true
+FAIL patient-dashboard css=true canvas=true mesh=true cards=10 blur14=true webkit=false shadow=true icons=true console=true
+FAIL doctor-comm-hub css=true canvas=true mesh=true cards=2 blur14=true webkit=false shadow=true icons=true console=false
+   errors: Messaging translations not found for language: ar
+FAIL doctor-completionProfile css=true canvas=true mesh=true cards=2 blur14=true webkit=false shadow=true icons=true console=false
+   errors: TypeError: Cannot set properties of null (setting 'textContent')
+FAIL ehr css=true canvas=false mesh=true cards=9 blur14=true webkit=false shadow=false icons=true console=true
+FAIL doctor-setAvailability css=true canvas=true mesh=true cards=2 blur14=true webkit=false shadow=true icons=true console=false
+   errors: Error loading sync status: Error: HTTP 404
+    at Object.loadSyncStatus (http://localhost:49799/frontend/assets/js/components/calendar-sync.js:43:23)
+    at async Object.init (http://localhost:49799/frontend/assets/js/components/calendar-sync.js:19:13)
+    at async HTMLDocument.<anonymous> (http://l

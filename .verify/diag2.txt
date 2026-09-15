@@ -1,0 +1,40 @@
+﻿=== pages/forgot-password.html (1 box-shadow hits)
+L28: box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+=== pages/reset-password.html (1 box-shadow hits)
+L28: box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+=== pages/verify-email.html (1 box-shadow hits)
+L28: box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+=== pages/common/about.html (1 box-shadow hits)
+L82: box-shadow: 0 1px 4px rgba(13,71,161,0.03);
+=== pages/common/support.html (8 box-shadow hits)
+L48: box-shadow: 0 12px 30px rgba(13, 71, 161, 0.25);
+L71: box-shadow: 0 18px 45px rgba(13, 71, 161, 0.08);
+L89: box-shadow: 0 0 0 0.15rem rgba(13, 71, 161, 0.15);
+L114: box-shadow: 0 14px 28px rgba(13, 71, 161, 0.28);
+L115: transition: transform 0.12s ease, box-shadow 0.12s ease, filter 0.12s ease;
+L120: box-shadow: 0 18px 35px rgba(13, 71, 161, 0.35);
+L127: box-shadow: none;
+L141: box-shadow: 0 18px 42px rgba(13, 71, 161, 0.06);
+=== pages/common/services.html (3 box-shadow hits)
+L134: box-shadow: 0 1px 4px rgba(13,71,161,0.03);
+L171: box-shadow: 0 1px 2px rgba(13,47,93,0.04);
+L187: box-shadow: none;
+=== about script tags
+L37: <script src="../../assets/js/components/translation-manager.js"></script>
+L39: <script src="../../assets/js/components/dashboard-translations.js"></script>
+L307: <script>
+L501: <script src="../../assets/js/main.js"></script>
+L504: <script src="../../assets/js/components/dashboard-translations.js"></script>
+L507: <script>
+L593: <script>
+L660: <script>
+=== git status (glass-touched files)
+ M Sahatak-2
+ M package-lock.json
+ M package.json
+ M sahatak-mobile/src/components/records/MedicalRecordsScreen.tsx
+ M sahatak-mobile/src/utils/reportHtml.ts
+?? .verify/
+?? medicalHistory.html
+?? medicalHistoryForm.html
+=== git diff stat for JS-error pages

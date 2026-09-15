@@ -21,6 +21,7 @@ import { ClinicsMapScreen } from '../components/map/ClinicsMapScreen';
 import { MedicalCheckupScreen } from '../components/checkup/MedicalCheckupScreen';
 import { MedicalRecordsScreen } from '../components/records/MedicalRecordsScreen';
 import { MyAppointmentsScreen } from '../components/appointments/MyAppointmentsScreen';
+import { CareSummaryScreen } from '../components/records/CareSummaryScreen';
 import { NotificationsScreen } from '../components/notifications/NotificationsScreen';
 import { ProfileScreen } from '../components/profile/ProfileScreen';
 
@@ -70,6 +71,7 @@ export const AppNavigator: React.FC = () => {
           <Stack.Screen name="MedicalCheckup" component={MedicalCheckupScreen} />
           <Stack.Screen name="MedicalRecords" component={MedicalRecordsScreen} />
           <Stack.Screen name="MyAppointments" component={MyAppointmentsScreen} />
+          <Stack.Screen name="CareSummary" component={CareSummaryScreen} />
           <Stack.Screen name="Notifications" component={NotificationsScreen} />
           <Stack.Screen name="Profile" component={ProfileScreen} />
         </Stack.Group>

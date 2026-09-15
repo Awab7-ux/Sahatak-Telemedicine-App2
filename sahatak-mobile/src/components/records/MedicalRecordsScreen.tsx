@@ -114,6 +114,8 @@ export const MedicalRecordsScreen: React.FC = () => {
         doctorSpecialty: '',
         doctorSpecialtyAr: '',
         doctorAvatar: '',
+        facility: 'Sahatak Clinic',
+        facilityAr: 'عيادات صحتك',
         date: (d.diagnosis_date || '').slice(0, 10),
         dateAr: (d.diagnosis_date || '').slice(0, 10),
         type: 'consultation_summary',
@@ -166,7 +168,7 @@ export const MedicalRecordsScreen: React.FC = () => {
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async (record: MedicalRecord) => {
-    if (record.type !== 'prescription') return;
+    if (record.type !== 'prescription' && record.type !== 'consultation_summary') return;
     if (isDownloading) return;
     setIsDownloading(true);
     try {
@@ -479,7 +481,7 @@ export const MedicalRecordsScreen: React.FC = () => {
                 )}
               </ScrollView>
 
-              {viewingRecord.type === 'prescription' && (
+              {(viewingRecord.type === 'prescription' || viewingRecord.type === 'consultation_summary') && (
                 <TouchableOpacity
                   activeOpacity={0.85}
                   onPress={() => handleDownload(viewingRecord)}
