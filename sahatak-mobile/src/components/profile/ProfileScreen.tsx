@@ -436,7 +436,7 @@ export const ProfileScreen: React.FC = () => {
                 </View>
               </View>
               <Switch
-                value={calmUi.calm_mode}
+                value={calmUi?.calm_mode ?? false}
                 onValueChange={(v: boolean) => setCalmUi({ calm_mode: v })}
                 trackColor={{ false: Colors.slate[200], true: Colors.primary }}
                 thumbColor={Colors.white}
@@ -471,7 +471,7 @@ export const ProfileScreen: React.FC = () => {
                 key={sub.key}
                 style={[
                   styles.menuItem,
-                  { flexDirection: isRtl ? 'row-reverse' : 'row', opacity: calmUi.calm_mode ? 1 : 0.5 },
+                  { flexDirection: isRtl ? 'row-reverse' : 'row', opacity: calmUi?.calm_mode ? 1 : 0.5 },
                 ]}
               >
                 <View style={[styles.menuItemLeft, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
@@ -481,8 +481,8 @@ export const ProfileScreen: React.FC = () => {
                   </Text>
                 </View>
                 <Switch
-                  value={calmUi[sub.key]}
-                  disabled={!calmUi.calm_mode}
+                  value={calmUi?.[sub.key] ?? false}
+                  disabled={!calmUi?.calm_mode}
                   onValueChange={(v: boolean) => setCalmUi({ [sub.key]: v })}
                   trackColor={{ false: Colors.slate[200], true: Colors.primary }}
                   thumbColor={Colors.white}

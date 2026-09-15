@@ -453,7 +453,7 @@ export const HomeScreen: React.FC = () => {
       </View>
 
       {/* Popular Pharmacy Products — hidden by Calm Mode "simplified layout" (never hides medical info) */}
-      {!calmUi.simplified_layout && (
+      {!calmUi?.simplified_layout && (
       <View style={styles.sectionPadding}>
         <View style={[styles.sectionHeaderRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
           <Text style={styles.sectionTitle}>
