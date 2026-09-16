@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 import { I18nManager, AppState, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Updates from 'expo-updates';
-import { socketService } from '../services/socketService';
 
 import {
   Language,
@@ -444,10 +443,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (res?.user) {
       setUser(res.user);
       setIsAuthenticated(true);
-      // Connect Socket.IO with the fresh JWT token
-      if (res.token) {
-        socketService.connect(res.token);
-      }
     } else {
       throw new Error('Authentication failed');
     }
@@ -468,16 +463,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (res?.user) {
       setUser(res.user);
       setIsAuthenticated(true);
-      if (res.token) {
-        socketService.connect(res.token);
-      }
     } else {
       throw new Error('Account creation failed');
     }
   };
 
   const logout = async () => {
-    socketService.disconnect();
     activeChatConversationId.current = '';
     await removeAuthToken();
     setUser(null);
