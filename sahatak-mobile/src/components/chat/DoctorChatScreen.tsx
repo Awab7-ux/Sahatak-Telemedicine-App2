@@ -27,6 +27,7 @@ import {
 } from 'lucide-react-native';
 import { useApp } from '../../context/AppContext';
 import { DOCTORS } from '../../data/mockData';
+import { Avatar } from '../common/Avatar';
 import { Colors } from '../../theme/colors';
 import { Shadows } from '../../theme/styles';
 import { Appointment } from '../../types';
@@ -170,7 +171,7 @@ export const DoctorChatScreen: React.FC = () => {
           </TouchableOpacity>
 
           <View style={styles.avatarWrap}>
-            <Image source={{ uri: doctor.avatar }} style={styles.docAvatar} />
+            <Avatar uri={doctor.avatar} name={doctor.name} style={styles.docAvatar} />
             <View style={styles.onlineDot} />
           </View>
 

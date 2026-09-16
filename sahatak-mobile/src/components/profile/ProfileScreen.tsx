@@ -34,13 +34,12 @@ import {
 } from 'lucide-react-native';
 import { useApp } from '../../context/AppContext';
 import { Header } from '../common/Header';
+import { Avatar } from '../common/Avatar';
 import { resolveImageUrl } from '../../api/client';
 import { uploadAvatarApi } from '../../api/profile';
 import { Colors } from '../../theme/colors';
 import { Shadows } from '../../theme/styles';
 import type { CalmUiPrefs } from '../../api/userSettings';
-
-const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80';
 
 export const ProfileScreen: React.FC = () => {
   const {
@@ -154,7 +153,7 @@ export const ProfileScreen: React.FC = () => {
     );
   };
 
-  const avatarUrl = user?.avatar ? resolveImageUrl(user.avatar) : DEFAULT_AVATAR;
+  const avatarUrl = user?.avatar ? resolveImageUrl(user.avatar) : '';
 
   return (
     <View style={styles.container}>
@@ -172,7 +171,7 @@ export const ProfileScreen: React.FC = () => {
         <View style={styles.userCard}>
           <View style={[styles.userCardInner, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
             <View style={styles.avatarWrap}>
-              <Image source={{ uri: avatarUrl }} style={styles.avatarImg} />
+              <Avatar uri={avatarUrl} name={user?.name} style={styles.avatarImg} />
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={handleChangeAvatar}

@@ -8,7 +8,6 @@ import {
   ClinicLocation,
   NotificationItem,
   UserProfile,
-  ChatMessage,
 } from '../types';
 
 export const INITIAL_USER: UserProfile = {
@@ -955,51 +954,3 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
   },
 ];
 
-export const INITIAL_CHAT_MESSAGES: ChatMessage[] = [
-  {
-    id: 'msg-1',
-    sender: 'doctor',
-    text: 'Hello Ahmed! Thanks for reaching out. Tooth sensitivity when drinking cold beverages is quite common. Can you tell me when you first noticed it?',
-    timestamp: '09:00 AM',
-  },
-  {
-    id: 'msg-2',
-    sender: 'patient',
-    text: "Hi Doctor! It's been about two weeks. I notice discomfort especially when I use cold water in the morning or eat cold ice cream.",
-    timestamp: '09:02 AM',
-  },
-  {
-    id: 'msg-3',
-    sender: 'doctor',
-    text: 'I see. It is possible that your enamel is thinning or your gums are slightly receded, exposing the dentin layer. May I know what kind of toothbrush you use?',
-    timestamp: '09:03 AM',
-  },
-  {
-    id: 'msg-4',
-    sender: 'patient',
-    text: 'I usually use a medium bristle brush with whitening toothpaste.',
-    timestamp: '09:05 AM',
-  },
-  {
-    id: 'msg-5',
-    sender: 'doctor',
-    text: 'That explains the enamel wear. I am attaching an e-prescription for a specialized sensitivity relief gel and remineralizing rinse.',
-    timestamp: '09:07 AM',
-    type: 'prescription',
-    prescriptionData: [
-      {
-        name: 'Sensodyne Rapid Relief Toothpaste',
-        nameAr: 'معجون سنسوداين للراحة السريعة',
-        dosage: 'Pea-sized',
-        dosageAr: 'كمية بحجم حبة البازلاء',
-        frequency: '2 times a day • Morning & Evening',
-        frequencyAr: 'مرتين يومياً • صباحاً ومساءً',
-        duration: 'Daily use',
-        durationAr: 'استخدام يومي منتظم',
-        instructions: 'Brush gently for 2 minutes with soft bristles.',
-        instructionsAr: 'تنظيف الأسنان بلطف بفرشاة ناعمة لمدة دقيقتين.',
-        price: 8.5,
-      },
-    ],
-  },
-];

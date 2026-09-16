@@ -25,7 +25,6 @@ import {
   INITIAL_APPOINTMENTS,
   MEDICAL_RECORDS,
   INITIAL_NOTIFICATIONS,
-  INITIAL_CHAT_MESSAGES,
 } from '../data/mockData';
 
 import { navigate, goBack as navGoBack } from '../navigation/navigationRef';
@@ -184,7 +183,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   ]);
 
   const [notifications, setNotifications] = useState<NotificationItem[]>(INITIAL_NOTIFICATIONS);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(INITIAL_CHAT_MESSAGES);
+  // Root cause fix (chat duplication bug): no mock seed. Messages must only
+  // ever come from the real per-conversation backend fetch; the previous
+  // INITIAL_CHAT_MESSAGES seed rendered the same hardcoded "tooth sensitivity"
+  // transcript under every conversation whenever the real fetch failed/was pending.
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [activeChatDoctor, setActiveChatDoctor] = useState<Doctor>(DOCTORS[0]);
   const [chatError, setChatError] = useState<string>('');
   const [conversations, setConversations] = useState<RawConversation[]>([]);
@@ -255,6 +258,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const unreadPollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isPollTickInFlightRef = useRef(false);
   const isUnreadTickInFlightRef = useRef(false);
+  // Doctor whose conversation is currently loaded into chatMessages. Used to
+  // wipe stale messages when switching conversations (Issue: wrong conversation's
+  // messages shown until the new fetch resolves).
+  const lastChatDoctorIdRef = useRef<string>('');
   const isAppActiveRef = useRef(true);
 
   // Initialize Language & Validate Token from SecureStore
@@ -619,6 +626,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const startChatPolling = (doctorId: string): void => {
     stopChatPolling();
     if (!doctorId) return;
+    // Same guard as loadChatHistory: on doctor switch, drop the old thread
+    // before the first poll tick returns its (different) history.
+    if (lastChatDoctorIdRef.current !== doctorId) {
+      setChatMessages([]);
+      lastChatDoctorIdRef.current = doctorId;
+    }
     pollChatMessages(doctorId);
     chatPollingIntervalRef.current = setInterval(() => pollChatMessages(doctorId), 3000);
   };
@@ -776,6 +789,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
    */
   const loadChatHistory = async (doctorId: string): Promise<void> => {
     if (!doctorId) return;
+    // Switching conversations: clear the previous thread immediately so the
+    // new conversation never renders another conversation's messages.
+    if (lastChatDoctorIdRef.current !== doctorId) {
+      setChatMessages([]);
+      lastChatDoctorIdRef.current = doctorId;
+    }
     try {
       const msgs = await fetchChatMessagesApi(doctorId, user?.id);
       setChatMessages((prev) => mergeChatMessages(prev, msgs));

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react-native';
 import { useApp } from '../../context/AppContext';
 import { Header } from '../common/Header';
+import { Avatar } from '../common/Avatar';
 import { AppointmentStatus, Appointment } from '../../types';
 import { Colors } from '../../theme/colors';
 import { Shadows } from '../../theme/styles';
@@ -249,7 +250,7 @@ export const MyAppointmentsScreen: React.FC = () => {
 
               {/* Doctor Details */}
               <View style={[styles.doctorRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-                <Image source={{ uri: apt.doctor.avatar }} style={styles.doctorAvatar} />
+                <Avatar uri={apt.doctor.avatar} name={apt.doctor.name} style={styles.doctorAvatar} />
                 <View style={[styles.doctorInfo, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
                   <Text numberOfLines={1} style={styles.doctorName}>
                     {t(apt.doctor.name, apt.doctor.nameAr)}

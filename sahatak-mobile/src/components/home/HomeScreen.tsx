@@ -30,14 +30,13 @@ import {
 import { useApp } from '../../context/AppContext';
 import { DOCTOR_CATEGORIES, HEALTH_CHECKUP_PACKAGES } from '../../data/mockData';
 import { MedicalIcon } from '../common/MedicalIcon';
+import { Avatar } from '../common/Avatar';
 import { JourneyTracker } from '../experience/JourneyTracker';
 import { deriveJourneyFromAppointment } from '../../experience/journey';
 import { SkeletonCard } from '../ui/Skeleton';
 import { resolveImageUrl } from '../../api/client';
 import { Colors } from '../../theme/colors';
 import { Shadows } from '../../theme/styles';
-
-const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&auto=format&fit=crop&q=80';
 
 export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
@@ -58,7 +57,7 @@ export const HomeScreen: React.FC = () => {
 
   const Arrow = isRtl ? ArrowLeft : ArrowRight;
   const upcomingApt = appointments.find((a) => a.status === 'upcoming') || appointments[0];
-  const avatarUrl = user?.avatar ? resolveImageUrl(user.avatar) : DEFAULT_AVATAR;
+  const avatarUrl = user?.avatar ? resolveImageUrl(user.avatar) : '';
 
   // ── Journey (advisory/derived only — backend RBAC remains the real gate) ──
   // Focus appointment: the active upcoming one, else the most recent completed.
@@ -96,10 +95,7 @@ export const HomeScreen: React.FC = () => {
             onPress={() => navigateTo('profile')}
             style={[styles.userRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}
           >
-            <Image
-              source={{ uri: avatarUrl }}
-              style={styles.avatar}
-            />
+            <Avatar uri={avatarUrl} name={user?.name} style={styles.avatar} />
             <View style={{ alignItems: isRtl ? 'flex-end' : 'flex-start' }}>
               <Text style={styles.greetingText}>
                 {t('Good morning,', 'صباح الخير،')}
@@ -315,7 +311,7 @@ export const HomeScreen: React.FC = () => {
 
           <View style={styles.appointmentCard}>
             <View style={[styles.aptDoctorRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
-              <Image source={{ uri: upcomingApt.doctor.avatar }} style={styles.aptDoctorAvatar} />
+              <Avatar uri={upcomingApt.doctor.avatar} name={upcomingApt.doctor.name} style={styles.aptDoctorAvatar} />
               <View style={[styles.aptDoctorInfo, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
                 <Text style={styles.aptDoctorName}>
                   {t(upcomingApt.doctor.name, upcomingApt.doctor.nameAr)}
@@ -421,7 +417,7 @@ export const HomeScreen: React.FC = () => {
               onPress={() => navigateTo('doctor_detail', { doctor: doc })}
               style={styles.doctorCard}
             >
-              <Image source={{ uri: doc.avatar }} style={styles.docAvatar} />
+              <Avatar uri={doc.avatar} name={doc.name} style={styles.docAvatar} />
               <View style={styles.docInfo}>
                 <View style={[styles.docRatingRow, { flexDirection: isRtl ? 'row-reverse' : 'row' }]}>
                   <Star size={14} color="#f59e0b" fill="#f59e0b" />
